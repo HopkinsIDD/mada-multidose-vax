@@ -1,0 +1,1110 @@
+---
+title: "Main Text Figures"
+author: "Forrest Jones"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Load data and functions
+
+```{r}
+source("utils.R")
+
+analysis <- importTidy()
+
+analysis.DTP<- analysis[[1]]
+analysis.PCV10<- analysis[[2]]
+analysis.Rota<- analysis[[3]]
+
+```
+
+
+### Figure 1
+Take figure 1b into powerpoint.
+```{r}
+
+# 
+# 
+# #Figure 1a
+# p1a <- rasterGrob(readPNG("Custom Figures/map_fig.png"),interpolate=TRUE)
+# 
+# 
+# f1a <- qplot(1:10, 1:10, geom="blank") +
+#   annotation_custom(p1a, xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf) + theme_void()
+
+
+#Figure 1b
+VWlabels <- data.frame(
+labels =c("VW", "VW", "VW", "SIA", "Card Collection"),
+x =as.Date(c("2015-05-01","2015-10-01","2016-05-01","2016-10-01", "2017-04-01")) ,
+y = c(rep(-10,4),-10)
+)
+
+library(RColorBrewer)
+
+f1b <- analysis.DTP %>% mutate(
+                month = floor_date(DDN , "month")
+        ) %>% group_by(month, District) %>%
+        summarize(count=n()) %>% 
+        ggplot(aes(x=month,
+                   y= count,
+                   col=District)) +
+                geom_point(size=2,alpha=0.7) +
+                geom_line(lwd=1,alpha=0.7)+
+                ylab("Vaccination Cards") +
+                xlab("Birth Month") +
+        #facet_wrap(.~District, nrow=3) +
+        #theme(legend.position = "none") +
+                geom_text(inherit.aes=FALSE,data=VWlabels,
+                          aes(x=x,y=y,label=labels),
+                          angle=0, #hjust="left",
+                          fontface="bold") +
+        scale_color_brewer(palette = "Set1" )+
+         xlim(as.Date("2014-12-01"),
+             as.Date("2017-07-01")) +
+        theme_cowplot()+
+        theme(legend.position = c(0.7,0.7))+
+        geom_hline(yintercept=0)
+
+
+ggsave("posterfigures/cards.png",plot=f1b,
+       height = 3.3, width = 6.2)
+                       # scale_color_manual(values=rev(c("#fed98e", "#a1dab4", "#fe9929", "#41b6c4", "#cc4c02", "#225ea8"))) +
+       
+
+# f1b <- analysis.DTP %>% mutate(
+#                 month = floor_date(DDN , "month")
+#         ) %>% group_by(month, District) %>%
+#         summarize(count=n()) %>% ggplot(aes(x=month, y= count,
+#                               fill=District)) +
+#                 geom_bar(stat="identity", position = "dodge") +
+#                 ylab("Vaccination Cards") +
+#                 xlab("Birth Month") +
+#         #facet_wrap(.~District, nrow=3) +
+#         #theme(legend.position = "none") +
+#                 geom_text(inherit.aes=FALSE,data=VWlabels,
+#                           aes(x=x,y=y,label=labels),
+#                           angle=0, #hjust="left",
+#                           fontface="bold") +
+#                        scale_fill_manual(values=rev(c("#fed98e", "#a1dab4", "#fe9929", "#41b6c4", "#cc4c02", "#225ea8"))) +
+#         xlim(as.Date("2014-12-01"),
+#              as.Date("2017-07-01"))
+
+f1b
+# #Figure 1C
+# 
+# p1c <- rasterGrob(readPNG("late_fig.png"),interpolate=TRUE)
+# 
+# 
+# f1c <- qplot(1:10, 1:10, geom="blank") +
+#   annotation_custom(p1c, xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf) + theme_void()
+# 
+# 
+# plot_grid(plot_grid(f1a,f1b, ncol =2,
+#           rel_widths = c(1, 2)
+#           ),
+#           f1c, nrow=2)
+          
+
+```
+
+### Figure 2: Coverage Estimates
+```{r}
+
+#coverage figures
+#figure 2a table
+f2a_tab <-      bind_rows(
+                        getCovLat(analysis.DTP)[[1]] %>%
+                                mutate(antigen="DTP"),
+                        getCovLat(analysis.PCV10)[[1]]%>%
+                                mutate(antigen="PCV10"),
+                        getCovLat(analysis.Rota)[[1]]%>%
+                                mutate(antigen="Rotavirus")
+                        ) %>%
+        mutate(cov=round(cov,2)) %>%
+        mutate(cov=ifelse(antigen=="Rotavirus" & dose=="Third",NA,cov),
+               lb=ifelse(antigen=="Rotavirus" & dose=="Third",NA,lb),
+               ub=ifelse(antigen=="Rotavirus" & dose=="Third",NA,ub)) 
+
+#figure 2a ggplot
+f2a <- f2a_tab %>%  
+        ggplot(aes(x=antigen,y=cov*100,fill=dose)) +
+        geom_bar(stat="identity",
+                 position = position_dodge(0.9),
+                 alpha=0.5) +
+        geom_errorbar(aes(ymin=lb*100,ymax=ub*100,
+                      col=dose),
+                      position = position_dodge(0.9),
+                      width=0.5) +
+        ylab("Coverage at 1-year old (%)") +
+        xlab("Vaccine")+ ylim(c(0,100)) +
+        scale_colour_grey("Dose",start=0.8, end=0.2)+
+        scale_fill_grey("Dose",start=0.8, end=0.2)+
+
+        geom_text(aes(label=cov*100,x=antigen,y=100*cov+5,group=dose),
+                   position = position_dodge(0.9))+theme_cowplot()+
+        theme(legend.position="none")
+
+#figure 2b table
+f2b_tab <-   stratifyCovLat(analysis.DTP,"District")[[1]] %>%
+                mutate(cov=round(cov,2)) %>%
+                mutate(District=factor(stratum, levels=levels(analysis.DTP$District),
+                                              labels= c("MAH","MAR",
+                                                        "TU1","TU2",
+                                                        "MAN","VOH"))) %>%
+                mutate(urban = ifelse(stratum %in% c("MAHAJANGA I","MANAKARA","TULEAR I"),
+                                      "Urban","Rural"),
+                       urban=factor(urban,levels=c("Urban","Rural")))
+#figure 2b annotation
+f2b_ann_text <- data.frame(cov = .05,
+                           pLate = .025,
+                       dose=factor(c(1,1),levels=as.character(1:3)),
+                       District = factor(c("TU1","TU2"),
+                                      levels = levels(f2b_tab$District)),
+                       lab = c("Urban","Rural"),
+                       urban = factor(c("Urban","Rural"),
+                                      levels = c("Urban","Rural")))
+
+#figure 2b ggplot
+f2b <- f2b_tab %>% ggplot(aes(x=District,y=cov*100,
+                              col = dose, group=dose)) +
+                geom_point()+
+                geom_errorbar(aes(ymin=lb*100,ymax=ub*100,col = dose,group=dose),
+                      width =0.25) +
+        scale_colour_grey(start=0.8, end=0.2)+
+        ylab("Coverage at 1-year old (%)")+
+        ylim(c(0,100))+ 
+        geom_text(data = f2b_ann_text,aes(label=lab),col="black")+ 
+
+        facet_grid(.~urban, 
+                   scales = "free")+
+        theme_cowplot()+theme(  legend.position="none",
+                                axis.title.y = element_blank(),
+                                strip.background = element_blank(),
+                                strip.text.x = element_blank()
+                                )
+
+
+#figure 2c table
+f2c_tab <-stratifyCovLat(analysis.DTP,"birth.month")[[1]] %>%
+                mutate(cov=round(cov,2)) %>%
+                mutate(birth.month=factor(as.numeric(stratum),levels=1:12))
+
+#figure 2c ggplot
+f2c <- f2c_tab %>% ggplot(aes(x=birth.month,y=cov*100, 
+                              col = dose, group=dose)) +
+                geom_point()+#position=position_dodge(width = .5)) +
+                geom_line()+#position=position_dodge(width = .5)) +
+        geom_errorbar(aes(ymin=lb*100,ymax=ub*100,col = dose,group=dose),
+                      #position=position_dodge(width = .5),
+                      width =0.25) +
+                scale_colour_grey("Dose",start=0.8, end=0.2)+
+        ylab("Coverage at 1-year old (%)") +
+        xlab("Birth Month")+
+        ylim(c(0,100))+theme_cowplot()+
+        theme(axis.title.y = element_blank())
+
+
+
+
+
+
+#lateness figures
+
+#figure 2d table
+f2d_tab <- bind_rows(
+                        getCovLat(analysis.DTP)[[2]] %>%
+                                mutate(antigen="DTP"),
+                        getCovLat(analysis.PCV10)[[2]]%>%
+                                mutate(antigen="PCV10"),
+                        getCovLat(analysis.Rota)[[2]]%>%
+                                mutate(antigen="Rotavirus")
+                        ) %>%
+        mutate(pLate=round(lateness,2)) %>%
+        mutate(pLate=ifelse(antigen=="Rotavirus" & dose=="Third",NA,pLate))
+
+# figure 2d ggplot
+f2def_cols <- c("#fe9929", "#cc4c02", "#662506") #colors for lateness
+f2d <- f2d_tab %>% 
+        ggplot(aes(x=antigen,y=pLate*100,fill=dose)) +
+        geom_bar(stat="identity",
+                 position = position_dodge(0.9),
+                 alpha=0.5) +
+        ylab("Percentage receiving late doses (%)") +
+        xlab("Vaccine")+ ylim(c(0,50)) +
+        scale_fill_manual(values=f2def_cols)+
+        scale_color_manual(values=f2def_cols) +
+        geom_text(aes(label=pLate*100,x=antigen,y=pLate*100+5,group=dose),
+                   position = position_dodge(0.9))+theme_cowplot()+
+        theme(legend.position="none")
+
+# figure 2e table
+f2e_tab <- stratifyCovLat(analysis.DTP,"District")[[2]] %>%
+                mutate(pLate=round(lateness,2)) %>%
+                mutate(District=factor(stratum, levels=levels(analysis.DTP$District),
+                                              labels= c("MAH","MAR",
+                                                        "TU1","TU2",
+                                                        "MAN","VOH"))) %>%
+                mutate(urban = ifelse(stratum %in% c("MAHAJANGA I","MANAKARA","TULEAR I"),
+                                      "Urban","Rural"),
+                       urban=factor(urban,levels=c("Urban","Rural")))
+# figure 2e ggplot
+f2e <- f2e_tab %>%
+        ggplot(aes(x=District,y=pLate*100,
+                              col = dose, group=dose)) +
+                geom_point()+
+         scale_color_manual(values=f2def_cols) +
+        ylim(c(0,50))+ 
+        geom_text(data = f2b_ann_text,aes(label=lab),col="black")+
+
+        facet_grid(.~urban,
+                   scales = "free")+
+        theme_cowplot()+theme(  legend.position="none",
+                                axis.title.y = element_blank(),
+                                strip.background = element_blank(),
+                                strip.text.x = element_blank()
+                                )
+
+# figure 2f table
+f2f_tab <-stratifyCovLat(analysis.DTP,"birth.month")[[2]] %>%
+                mutate(pLate=round(lateness,2)) %>%
+                mutate(birth.month=factor(as.numeric(stratum),levels=1:12))
+# figure 2f ggplot
+f2f <- f2f_tab %>%
+        ggplot(aes(x=birth.month,y=pLate*100, 
+                              col = dose, group=dose)) +
+                geom_point()+
+                geom_line()+
+         scale_color_manual("Dose",values=f2def_cols) +
+        xlab("Birth Month")+
+        ylim(c(0,50))+theme_cowplot()+
+        theme(axis.title.y = element_blank())
+
+
+
+#bring it all together
+f2 <- plot_grid(ggplot+theme_void(),f2a,f2b,f2c,
+                ggplot+theme_void(),f2d,f2e,f2f,nrow=2,
+                labels = c("A","","B","C","D","","E","F"),
+                align = "hv",axis="lb",rel_widths = c(0.1,1.3, 1,1.3))
+# ggsave("figures/main_figures/fig2.pdf",plot=f2,
+#        height = 6.3, width = 11.4)
+# ggsave("figures/main_figures/fig2.tiff",plot=f2,
+#        height = 6.3, width = 11.4)
+ggsave("figures/main_figures/fig2.png",plot=f2,
+       height = 6.3, width = 11.4)
+
+# #old coverage and lateness calculations
+# 
+# source('newf2a.R')
+# 
+# #f2cols <- c("#4a1486", "#807dba","#bcbddc")
+# # f2cols <- c("#41b6c4", "#253494","#c51b8a")
+# 
+# 
+# f2a <- f2a_tab %>%  
+#         ggplot(aes(x=antigen,y=cov*100,fill=Dose)) +
+#         geom_bar(stat="identity",
+#                  position = position_dodge(0.9),
+#                  alpha=0.5) +
+#         geom_errorbar(aes(ymin=lb*100,ymax=ub*100,
+#                       col=Dose),
+#                       position = position_dodge(0.9),
+#                       width=0.5) +
+#         ylab("Coverage at 1-year old (%)") +
+#         xlab("Vaccine")+ ylim(c(0,100)) +
+#         scale_colour_grey(start=0.8, end=0.2)+
+#         scale_fill_grey(start=0.8, end=0.2)+
+#         # scale_fill_manual(values=f2cols)+
+#         # scale_color_manual(values=f2cols) +
+#         geom_text(aes(label=cov*100,x=antigen,y=100*cov+5,group=Dose),
+#                    position = position_dodge(0.9))+theme_cowplot()+
+#         theme(legend.position="none")
+# 
+# source('newf2b.R')
+# 
+# 
+# f2b_tab <- f2b_tab %>% mutate(District=factor(District,
+#                                               labels= c("MAH","MAR",
+#                                                         "TU1","TU2",
+#                                                         "MAN","VOH")),
+#                               urban=relevel(urban,"Urban"))
+# 
+# ann_text <- data.frame(cov = .05,
+#                        Dose=factor(c(1,1),levels=as.character(1:3)),
+#                        District = factor(c("TU1","TU2"),
+#                                       levels = levels(f2b_tab$District)),
+#                        lab = c("Urban","Rural"),
+#                        urban = factor(c("Urban","Rural"),
+#                                       levels = c("Urban","Rural")))
+# 
+# f2b <- f2b_tab %>% ggplot(aes(x=District,y=cov*100,
+#                               col = Dose, group=Dose)) +
+#                 geom_point()+#position=position_dodge(width = .5)) +
+#                 #geom_line()+#position=position_dodge(width = .5))
+#                 
+#         geom_errorbar(aes(ymin=lb*100,ymax=ub*100,col = Dose,group=Dose),
+#                       #position=position_dodge(width = .5),
+#                       width =0.25) +
+#         scale_colour_grey(start=0.8, end=0.2)+
+#         # scale_color_manual(values=f2cols) +
+#         ylab("Coverage at 1-year old (%)")+
+#         ylim(c(0,100))+ 
+#         geom_text(data = ann_text,aes(label=lab),col="black")+ 
+#         # annotate(geom="text", x=urblab[1], y=30, label="Scatter plot",
+#         #       color="red")+
+#         facet_grid(.~urban, #space = "free",
+#                    scales = "free")+
+#         # geom_text(inherit.aes = FALSE,label="Urban",
+#         #           x=urblab[1],
+#         #           y=10)
+#         theme_cowplot()+theme(  legend.position="none",
+#                                 axis.title.y = element_blank(),
+#                                 strip.background = element_blank(),
+#                                 strip.text.x = element_blank()
+#                                 )
+# 
+# source('newf2c.R')
+# 
+# f2c <- f2c_tab %>% ggplot(aes(x=birth.month,y=cov*100, 
+#                               col = Dose, group=Dose)) +
+#                 geom_point()+#position=position_dodge(width = .5)) +
+#                 geom_line()+#position=position_dodge(width = .5)) +
+#         geom_errorbar(aes(ymin=lb*100,ymax=ub*100,col = Dose,group=Dose),
+#                       #position=position_dodge(width = .5),
+#                       width =0.25) +
+#                 scale_colour_grey(start=0.8, end=0.2)+
+#         # scale_color_manual(values=f2cols) +
+#         ylab("Coverage at 1-year old (%)") +
+#         xlab("Birth Month")+
+#         ylim(c(0,100))+theme_cowplot()+
+#         theme(axis.title.y = element_blank())
+# 
+# plot_grid(f2a,f2b,f2c,nrow=1,align = "hv",axis="l")
+# 
+# 
+# source("GetLateEstimates.R")
+# 
+# dfLatfin<- dfLatfin %>% 
+#         mutate(Dose=factor(Dose,labels=c("1","2","3")),
+#                antigen=recode(antigen, Rota = "Rotavirus"))
+# 
+# # f3cols <- c("#a50f15", "red","orange")
+# f3cols <- c("#fe9929", "#cc4c02", "#662506")
+# 
+# f3a <- dfLatfin %>% filter(strata=="Overall") %>%
+#         ggplot(aes(x=antigen,y=pLate*100,fill=Dose)) +
+#         geom_bar(stat="identity",
+#                  position = position_dodge(0.9),
+#                  alpha=0.5) +
+#         # geom_errorbar(aes(ymin=lb*100,ymax=ub*100,
+#         #               col=Dose),
+#         #               position = position_dodge(0.9),
+#         #               width=0.5) +
+#         ylab("Propotion of doses given late (%)") +
+#         xlab("Vaccine")+ ylim(c(0,50)) +
+#         scale_fill_manual(values=f3cols)+
+#         scale_color_manual(values=f3cols) +
+#         geom_text(aes(label=pLate*100,x=antigen,y=pLate*100+5,group=Dose),
+#                    position = position_dodge(0.9))+theme_cowplot()+
+#         theme(legend.position="none")
+#         
+#         # ggplot(aes(x=antigen,y=pLate*100,fill=Dose)) +
+#         # geom_bar(stat="identity",
+#         #          position = position_dodge(0.9)#,
+#         #          #alpha=0.5
+#         #          ) +
+#         # # geom_errorbar(aes(ymin=lb*100,ymax=ub*100,
+#         # #               col=Dose),
+#         # #               position = position_dodge(0.9),
+#         # #               width=0.5) +
+#         # ylab("Proportion of doses  given that were late (%)") + xlab("Vaccine")+ ylim(c(0,50)) +
+#         # scale_fill_manual(values=f3cols)+
+#         # # scale_color_manual(values=f3cols) +
+#         # geom_text(aes(label=pLate*100,x=antigen,y=100*pLate+5,group=Dose),
+#         #            position = position_dodge(0.9)) + coord_flip()
+# 
+#  ann_text <- data.frame(pLate = .025,
+#                        Dose=factor(c(1,1),levels=levels(dfLatfin$Dose)),
+#                        District = factor(c("TU1","TU2"),
+#                                       levels = c("MAH","MAR",
+#                                                         "TU1","TU2",
+#                                                         "MAN","VOH")),
+#                        lab = c("Urban","Rural"),
+#                        urban = factor(c("Urban","Rural"),
+#                                       levels = c("Urban","Rural")))
+#  
+# f3b <- dfLatfin %>% filter(antigen=="DTP" &
+#                         str_sub(strata,1,8)=="District")%>%
+#         rename(District = strata)  %>%
+#         mutate(District=str_sub(District,10),
+#                District=factor(District,
+#                                levels=levels(analysis.DTP$District))) %>%  
+#         mutate(urban = District %in% c("MAHAJANGA I","TULEAR I","MANAKARA"),
+#                urban = factor(urban,labels =c("Rural","Urban")))%>%
+#         mutate(District=factor(District,
+#                                               labels= c("MAH","MAR",
+#                                                         "TU1","TU2",
+#                                                         "MAN","VOH")),
+#                               urban=relevel(urban,"Urban")) %>%
+#         
+#         ggplot(aes(x=District,y=pLate*100,
+#                               col = Dose, group=Dose)) +
+#                 geom_point()+#position=position_dodge(width = .5)) +
+#                 #geom_line()+#position=position_dodge(width = .5))
+#                 
+#         # geom_errorbar(aes(ymin=lb*100,ymax=ub*100,col = Dose,group=Dose),
+#         #               #position=position_dodge(width = .5),
+#         #               width =0.25) +
+#         #scale_colour_grey(start=0.8, end=0.2)+
+#          scale_color_manual(values=f3cols) +
+#         ylim(c(0,50))+ 
+#         geom_text(data = ann_text,aes(label=lab),col="black")+ 
+#         # annotate(geom="text", x=urblab[1], y=30, label="Scatter plot",
+#         #       color="red")+
+#         facet_grid(.~urban, #space = "free",
+#                    scales = "free")+
+#         # geom_text(inherit.aes = FALSE,label="Urban",
+#         #           x=urblab[1],
+#         #           y=10)
+#         theme_cowplot()+theme(  legend.position="none",
+#                                 axis.title.y = element_blank(),
+#                                 strip.background = element_blank(),
+#                                 strip.text.x = element_blank()
+#                                 )
+#         
+#         
+#         
+#         
+#         # ggplot(aes(x=District,y=pLate*100, col = Dose, group=Dose)) +
+#         #         geom_point()+#position=position_dodge(width = .5)) +
+#         #         geom_line()+#position=position_dodge(width = .5))
+#         #         
+#         # # geom_errorbar(aes(ymin=lb*100,ymax=ub*100,col = Dose,group=Dose),
+#         # #               #position=position_dodge(width = .5),
+#         # #               width =0.25) +
+#         # facet_grid(urban~., #space = "free",
+#         #            scales = "free")+
+#         # scale_color_manual(values=f3cols) +
+#         # ylim(c(0,50))+
+#         # ylab("Proportion of doses given that were late (%)")+
+#         # theme(legend.position="none") +
+#         # coord_flip()
+# 
+# 
+# f3c<- dfLatfin %>% filter(antigen=="DTP" &
+#                         str_sub(strata,1,11)=="birth.month")%>%
+#         rename(birth.month = strata)  %>%
+#         mutate(birth.month=factor(as.numeric(str_sub(birth.month,13))),
+#                Dose=factor(Dose)) %>%
+#         
+#         ggplot(aes(x=birth.month,y=pLate*100, 
+#                               col = Dose, group=Dose)) +
+#                 geom_point()+#position=position_dodge(width = .5)) +
+#                 geom_line()+#position=position_dodge(width = .5)) +
+#         # geom_errorbar(aes(ymin=lb*100,ymax=ub*100,col = Dose,group=Dose),
+#         #               #position=position_dodge(width = .5),
+#         #               width =0.25) +
+#                 #scale_colour_grey(start=0.8, end=0.2)+
+#          scale_color_manual(values=f3cols) +
+#         xlab("Birth Month")+
+#         ylim(c(0,50))+theme_cowplot()+
+#         theme(axis.title.y = element_blank())
+#         
+#         # ggplot(aes(x=birth.month,y=pLate*100, col = Dose, group=Dose)) +
+#         #         geom_point()+#position=position_dodge(width = .5)) +
+#         #         geom_line()+#position=position_dodge(width = .5)) +
+#         # # geom_errorbar(aes(ymin=lb*100,ymax=ub*100,col = Dose,group=Dose),
+#         # #               #position=position_dodge(width = .5),
+#         # #               width =0.25) +
+#         # scale_color_manual(values=f3cols) +
+#         # ylab("Proportion of doses given that were late (%)") +
+#         # xlab("Birth Month")+
+#         # ylim(c(0,50))+
+#         # theme(legend.position="none") + coord_flip()
+# 
+# 
+# # plot_grid(f3a,f3b,f3c,nrow=1,align = "hv",axis="l")
+# f2 <- plot_grid(f2a,f2b,f2c,f3a,f3b,f3c,nrow=2,align = "hv",axis="lb")
+# ggsave("final_figures/fig2.tiff",plot=f2,
+#        height = 6.3, width = 11.4)
+
+```
+
+
+
+### Figure 3: RiverPlot for cohort
+
+```{r}
+
+pDTP <- makeRiverPlot(analysis[[1]],"DTP") +
+                  theme_cowplot()+
+                  theme(legend.position = "none")
+pPCV <- makeRiverPlot(analysis[[2]],"PCV10")+
+                  theme_cowplot()+
+                  theme(legend.position = "none")
+
+pRota <-makeRiverPlot(analysis[[3]],"Rota") +
+                  theme_cowplot()+
+                  ggtitle("Rotavirus")
+
+
+# ggsave("posterfigures/rpDTP.png",plot=pDTP,
+#        height = 3.75, width = 11)
+# ggsave("posterfigures/rpPCV.png",plot=pPCV,
+#        height = 3.75, width = 11)
+# ggsave("posterfigures/rpRota.png",plot=pRota,
+#        height = 3.75, width = 7.5)
+
+pRP <- plot_grid(pDTP,
+          pPCV,
+          plot_grid(pRota,
+                    ggplot() + theme_void(),
+                    rel_widths = c(0.75,0.25)),
+          labels = c("A","B","C"),
+          ncol=1)
+
+ggsave("figures/main_figures/fig3.tiff",plot=pRP,
+       height = 9, width = 7.5)
+ggsave("figures/main_figures/fig3.pdf",plot=pRP,
+       height = 9, width = 7.5)
+ggsave("figures/main_figures/fig3.png",plot=pRP,
+       height = 9, width = 7.5)
+
+
+
+
+```
+
+### Figure 4: District- level DTP coverage estimates by timeliness of prior doses.
+Among children who received their first (A) and second (B) doses, coverage estimates for the following doses were calculated using the Kaplan-Meier method. Color indicates timeliness of the prior dose (Orange = Late, Green = On Time). Districts are abbreviated with three characters (MAH=Mahajanga I; TU1=Tulear I; MAN=Manakara; MAR=Maravoay; TU2=Tulear II, VOH=Vohipeno).
+```{r}
+
+
+f4_tab <- NULL
+
+for (i in unique(analysis.DTP$District)){
+        
+        #create district specific weighted df
+        tmp_df <- filter(analysis.DTP, District==i)
+        tmp_df <- createWeightedDF(tmp_df)
+        
+        #second dose coverage by timeliness
+        tmp_df_1ontime <- filter(tmp_df,V1.timeliness == "OnTime")
+        tmp_df_1late   <- filter(tmp_df,V1.timeliness == "Late")
+        
+        fit_2ontime    <- survfit(Surv(T2, D2) ~ 1, 
+                                  data = tmp_df_1ontime ,weights=W2)
+        fit_2late    <- survfit(Surv(T2, D2) ~ 1, 
+                                  data = tmp_df_1late,weights=W2)
+        
+        #third dose coverage by timeliness
+        tmp_df_2ontime <- filter(tmp_df,V2.timeliness == "OnTime")
+        tmp_df_2late   <- filter(tmp_df,V2.timeliness == "Late")
+        
+        fit_3ontime    <-survfit(Surv(T3, D3) ~ 1, 
+                                  data = tmp_df_2ontime,weights=W3)
+        fit_3late    <-survfit(Surv(T3, D3) ~ 1, 
+                                  data = tmp_df_2late,weights=W3)
+        
+        covdf <- bind_rows(
+                (1-getSurv(fit_2ontime,52)) %>%
+                        mutate(
+                                dose="Second",
+                                timeliness="On Time"
+                        ),
+                (1-getSurv(fit_2late,52))%>%
+                        mutate(
+                                dose="Second",
+                                timeliness="Late"
+                        ),
+                (1-getSurv(fit_3ontime,52))%>%
+                        mutate(
+                                dose="Third",
+                                timeliness="On Time"
+                        ),
+                (1-getSurv(fit_3late,52))%>%
+                        mutate(
+                                dose="Third",
+                                timeliness="Late"
+                        )
+                )%>%
+                rename(cov=surv) %>%
+                #switch upperbound and lowerbound
+                rename(tmp=lb,
+                       lb=ub) %>%
+                rename(ub=tmp) %>%
+                mutate(District=i)
+
+
+        f4_tab <- bind_rows(covdf,f4_tab)
+       
+}
+
+f4_tab <-f4_tab %>%
+        mutate(urban = ifelse(District %in% 
+                                      c("MAHAJANGA I","TULEAR I",
+                                        "MANAKARA")
+                              ,"Urban","Rural")) %>%
+        mutate(urban = factor(urban, levels = c("Urban","Rural"))) %>%
+        
+        mutate(
+               District=factor(District,
+                               levels=levels(
+                                       analysis.DTP$District),
+                               labels = c("MAH","MAR",
+                                        "TU1","TU2",
+                                        "MAN","VOH")))
+
+
+#ggplot plot f4a
+f4_ann_text <- data.frame(cov = .05,
+                       timeliness=factor(c(1,1),levels=as.character(
+                               c("OnTime","Late"))),
+                       District = factor(c("TU1","TU2"),
+                                      levels = levels(f4_tab$District)),
+                       lab = c("Urban","Rural"),
+                       urban = factor(c("Urban","Rural"),
+                                      levels = c("Urban","Rural")))
+
+
+
+f4_a<- f4_tab %>% filter(dose=="Second") %>%
+        ggplot(aes(x=District,y=cov*100,
+                              col = timeliness, group=timeliness)) +
+                geom_point()+
+        geom_errorbar(aes(ymin=lb*100,
+                          ymax=ub*100,
+                          col = timeliness,group=timeliness),
+                      width =0.25) +
+        scale_color_manual(name="Timeliness \n of Prior Dose",
+                           values=c("#ff7f00","#4daf4a")) +
+        ylab("Second Dose Coverage (%)")+
+        ylim(c(0,100))+ 
+        geom_text(data = f4_ann_text,aes(label=lab),col="black")+
+        facet_grid(.~urban, #space = "free",
+                   scales = "free")+
+        
+        theme_cowplot()+theme( 
+                                #axis.title.y = element_blank(),
+                                strip.background = element_blank(),
+                                strip.text.x = element_blank()
+                                )
+
+
+f4_b <- f4_tab %>% filter(dose=="Third") %>%
+        ggplot(aes(x=District,y=cov*100,
+                              col = timeliness, group=timeliness)) +
+                geom_point()+
+        geom_errorbar(aes(ymin=lb*100,
+                          ymax=ub*100,
+                          col = timeliness,group=timeliness),
+                      width =0.25) +
+        scale_color_manual(values=c("#ff7f00","#4daf4a")) +
+        ylab("Third Dose Coverage (%)")+
+        ylim(c(0,100))+ 
+        geom_text(data = f4_ann_text,aes(label=lab),col="black")+ 
+        facet_grid(.~urban, #space = "free",
+                   scales = "free")+
+        
+        theme_cowplot()+theme( 
+                                #axis.title.y = element_blank(),
+                                strip.background = element_blank(),
+                                strip.text.x = element_blank()
+                                )
+
+
+f4 <- plot_grid(  f4_a+theme(legend.position = c(0.75,0.25)),
+                        ggplot+theme_void(),
+                        f4_b+theme(legend.position = "none"),
+                        rel_widths = c(1,0.1,1),
+                  labels = c("A","","B"),
+          nrow=1)
+
+# ggsave("figures/main_figures/fig4.pdf",plot=f4,
+#        height = 4.5, width = 10.5)
+# ggsave("figures/main_figures/fig4.tiff",plot=f4,
+#        height = 4.5, width = 10.5)
+ggsave("figures/main_figures/fig4.png",plot=f4,
+       height = 4.5, width = 10.5)
+
+
+# #OLD Figure 4
+# #uses create_delayDF.R
+# 
+# f5_df <- getDelayDF(analysis.DTP) %>% mutate(antigen="DTP") #%>%
+# 
+# f5_df$district <-  str_replace(f5_df$district,"   ","")
+# f5_df$district <-  str_replace(f5_df$district,"  ","")
+# 
+# 
+# f5_df <- f5_df %>%       rename(District = district) %>%
+#         
+#         mutate(urban = ifelse(District %in% 
+#                                       c("MAHAJANGA I","TULEAR I",
+#                                         "MANAKARA")
+#                               ,"Urban","Rural")) %>%
+#         mutate(
+#                District=factor(District,
+#                                levels=levels(
+#                                        analysis.DTP$District),
+#                                labels = c("MAH","MAR",
+#                                         "TU1","TU2",
+#                                         "MAN","VOH")))
+# 
+# ann_text <- data.frame(cov = .05,
+#                        timeliness=factor(c(1,1),levels=as.character(
+#                                c("OnTime","Late"))),
+#                        District = factor(c("TU1","TU2"),
+#                                       levels = levels(f5_df$District)),
+#                        lab = c("Urban","Rural"),
+#                        urban = factor(c("Urban","Rural"),
+#                                       levels = c("Urban","Rural")))
+# 
+# 
+# 
+# f5a <- f5_df %>% filter(dose=="Second") %>%
+#         ggplot(aes(x=District,y=cov*100,
+#                               col = timeliness, group=timeliness)) +
+#                 geom_point()+
+#         geom_errorbar(aes(ymin=lb*100,
+#                           ymax=ub*100,
+#                           col = timeliness,group=timeliness),
+#                       width =0.25) +
+#         scale_color_manual(name="Timeliness \n of Prior Dose",
+#                            values=c("#ff7f00","#4daf4a")) +
+#         ylab("Second Dose Coverage (%)")+
+#         ylim(c(0,100))+ 
+#         geom_text(data = ann_text,aes(label=lab),col="black")+ 
+#         facet_grid(.~urban, #space = "free",
+#                    scales = "free")+
+#         
+#         theme_cowplot()+theme( 
+#                                 #axis.title.y = element_blank(),
+#                                 strip.background = element_blank(),
+#                                 strip.text.x = element_blank()
+#                                 )
+# 
+# f5b<- f5_df %>% filter(dose=="Third") %>%
+#         ggplot(aes(x=District,y=cov*100,
+#                               col = timeliness, group=timeliness)) +
+#                 geom_point()+
+#         geom_errorbar(aes(ymin=lb*100,
+#                           ymax=ub*100,
+#                           col = timeliness,group=timeliness),
+#                       width =0.25) +
+#         scale_color_manual(values=c("#ff7f00","#4daf4a")) +
+#         ylab("Third Dose Coverage (%)")+
+#         ylim(c(0,100))+ 
+#         geom_text(data = ann_text,aes(label=lab),col="black")+ 
+#         facet_grid(.~urban, #space = "free",
+#                    scales = "free")+
+#         
+#         theme_cowplot()+theme( 
+#                                 #axis.title.y = element_blank(),
+#                                 strip.background = element_blank(),
+#                                 strip.text.x = element_blank()
+#                                 )
+# 
+# f5_final <- plot_grid(  f5a+theme(legend.position = c(0.75,0.25)),
+#                         ggplot+theme_void(),
+#                         f5b+theme(legend.position = "none"),
+#                         rel_widths = c(1,0.1,1),
+#           nrow=1)
+# 
+# ggsave("final_figures/fig4.tiff",plot=f5_final,
+#        height = 4.5, width = 10.5)
+
+# f5a <- f5_df %>% filter(dose=="Second") %>% ggplot(aes(x=District, y=cov*100,
+#                                 col=timeliness, group=timeliness)) +
+#                 geom_point() +
+#                 # geom_bar(stat="identity", aes(x=District, y=cov*100,
+#                 #                 fill=timeliness),
+#                 #              position = "dodge",alpha=0.5) +
+#                 geom_errorbar(aes(ymin=lb*100,ymax=ub*100,
+#                               col=timeliness,x=District),
+#                               #position = position_dodge(0.9),
+#                               width=0.25) +
+#                 facet_grid(urban~., #space = "free",
+#                    scales = "free")+
+#                 
+#                
+#                 ylab("Second Dose Coverage (%)") +
+#                 scale_fill_manual(values=c("#ff7f00","#4daf4a")) +
+#                 scale_color_manual(values=c("#ff7f00","#4daf4a")) +
+#                 labs(col = "Timeliness \n of First Dose  ",
+#                      fill = "Timeliness \n of First Dose  ") +
+#                 xlab("District") + ylim(c(45,100))+coord_flip()
+# 
+# f5b <- f5_df %>% filter(dose=="Third") %>% ggplot(aes(x=District, y=cov*100,
+#                                 col=timeliness, group=timeliness)) +
+#                 geom_point() + geom_line()+
+#                 # geom_bar(stat="identity", aes(x=District, y=cov*100,
+#                 #                 fill=timeliness),
+#                 #              position = "dodge",alpha=0.5) +
+#                 geom_errorbar(aes(ymin=lb*100,ymax=ub*100,
+#                               col=timeliness,x=District),
+#                               #position = position_dodge(0.9),
+#                               width=0.25) +
+#                 facet_grid(urban~., #space = "free",
+#                    scales = "free")+
+#                
+#                 ylab("Third Dose Coverage (%)") +
+#                 scale_fill_manual(values=c("#ff7f00","#4daf4a")) +
+#                 scale_color_manual(values=c("#ff7f00","#4daf4a")) +
+#                 labs(col = "Timeliness \n of Second Dose",
+#                      fill = "Timeliness \n of Second Dose") +
+#                 xlab("District") + ylim(c(45,100))+coord_flip()
+
+
+# plot_grid(f5a,f5b,ncol=1)
+
+
+# f3_df <- bind_rows(
+#         getDelayDF(analysis.DTP) %>% mutate(antigen="DTP"),
+#         getDelayDF(analysis.PCV10) %>% mutate(antigen="PCV"),
+#         getDelayDF(analysis.Rota) %>% mutate(antigen="Rota")  
+#         
+# ) %>% filter(!(antigen=="Rota" & dose == "Third")) %>%
+#         mutate(cov = round(100*cov),
+#                district = factor(district,
+#                                  levels =c("MAHAJANGA I","MAROVOAY   ",
+#                                            "TULEAR I   ", "TULEAR II  ",
+#                                            "MANAKARA   ", "VOHIPENO   ")))
+# 
+# 
+# 
+# ggplot(data=f3_df) +
+#                 geom_point( aes(x=antigen, y=cov,
+#                                 col=timeliness, shape = timeliness), 
+#                              size=3, alpha =0.6 ) +
+#                 facet_grid(dose~ district, space="free")+ 
+#                 #ylim(c(0.5,1)*100) +
+#                 ylab("Coverage (%)") +
+#                 scale_colour_manual(values=c("#ff7f00","#4daf4a")) +
+#                 labs(col = "Timeliness \n of Prior Dose", 
+#                      shape="Timeliness \n of Prior Dose") +
+#                 xlab("Vaccine")
+
+
+
+
+
+#createFig5(analysis)
+
+
+
+
+```
+
+### Figure 5. Predicted weekly probability of vaccination for each dose of DTP vaccination (A) and simulated impact of catch-up campaigns (B). 
+The y-axis represents the probability of DTP vaccination on a given week among individuals eligible for on-time or late vaccination in Tulear I. Area represents the 95% confidence intervals and the line in a Loess smooth function. Timing of VWs (black dashed) and the 2016 SIA (blue dotted) are indicated. (B) The simulated coverage of the third dose of DTP vaccine of children at 1-year of age is shown on the y-axis for different levels of catch-up on VWs.
+
+```{r}
+source('weeklyseasonality2.R')
+
+#visualize
+VW <- as.Date(c("2015-05-11","2015-10-28","2016-05-09","2016-10-26"))+3
+f2cols <- c("#41b6c4", "#253494","#c51b8a")
+
+#figure 5a
+# fits %>% 
+#         filter(upr<20 & timeliness =="On Time" | 
+#                         upr<3 & timeliness =="Late") %>%
+#         ggplot(aes(x = as.Date(week), y = fit,
+#                    ymin = lwr, ymax = upr,
+#                     col=factor(Dose),fill=factor(Dose)
+#                     )) + 
+#         geom_line() + 
+#         geom_ribbon(alpha=0.1, col=NA)+
+#         facet_wrap(.~timeliness,scale = "free_y",ncol=1)+
+#         geom_vline(xintercept=VW[1:3],lty=2,size=1) +
+#         geom_vline(xintercept=VW[4],col="blue",lty=3,size=1)+
+#         ylab("Predicted Weekly Hazard (%)") +
+#         xlab("Week of Vaccination")+
+#         scale_color_manual(values=f2cols)+
+#         scale_fill_manual(values=f2cols) +
+#         guides(fill=guide_legend(title="Dose"),
+#                col=guide_legend(title="Dose"))
+
+
+f5a  <- fits %>% filter(upr<100 & Dose ==1) %>%
+        ggplot(aes(x = as.Date(week), y = fit,
+                   ymin = lwr, ymax = upr,
+                    col=factor(timeliness),fill=factor(timeliness)
+                   
+                    )) +
+        geom_point() + 
+        geom_ribbon(alpha=0.1, col=NA) +
+        geom_smooth( se = FALSE) +
+        #facet_wrap(.~Dose,ncol=1)+
+        geom_vline(xintercept=VW[1:3],lty=2,size=1) +
+        geom_vline(xintercept=VW[4],col="blue",lty=3,size=1)+
+        ylab("Weekly Probability \n of Vaccination (%)") +
+        xlab("Week of Vaccination")+
+        scale_color_manual(values=c("orange","darkgreen"),
+                           name="Timeliness")+
+        scale_fill_manual(values=c("orange","darkgreen"),
+                          name="Timeliness")+
+        xlim(as.Date(c("2015-01-01","2017-03-01")))+
+        theme_cowplot()
+        #theme(axis.title=element_text(size=10,face="bold"))
+        #+
+        #scale_y_continuous(trans="log10")
+        
+
+
+
+#figure 5c and d
+
+source('markov_dates_VW.R')
+
+# catchupFull <- VWsimulation(catchup = 1)
+# catchupHalf <- VWsimulation(catchup = 0.5)
+# catchupTenth <- VWsimulation(catchup = 0.1)
+# catchupNone <- VWsimulation(catchup = 0)
+# 
+# 
+# write_rds(catchupFull,"data/generated_data/simulationfiles/catchupFull.rds")
+# write_rds(catchupHalf,"data/generated_data/simulationfiles/catchupHalf.rds")
+# write_rds(catchupTenth,"data/generated_data/simulationfiles/catchupTenth.rds")
+# write_rds(catchupNone,"data/generated_data/simulationfiles/catchupNone.rds")
+
+
+catchupFull <-read_rds("data/generated_data/simulationfiles/catchupFull.rds")
+catchupHalf <- read_rds("data/generated_data/simulationfiles/catchupHalf.rds")
+catchupTenth <- read_rds("data/generated_data/simulationfiles/catchupTenth.rds")
+catchupNone <- read_rds("data/generated_data/simulationfiles/catchupNone.rds")
+
+
+
+# markov models
+
+#gray.colors(3, start = 0.2, end = 0.8)
+VWs <- as.Date(c("2015-05-13","2015-10-28",
+                 "2016-05-09","2016-10-26")) #check if these dates were used to simulate
+
+
+# VWlabels <- data.frame(
+# labels =c("VW", "VW", "VW", "VW"),
+# x =as.Date(c("2015-05-13","2015-10-21",
+#                  "2016-05-11","2016-10-19")) ,
+# y = c(rep(90,4))
+# )
+
+f5b <-bind_rows(catchupFull[[1]],
+                catchupHalf[[1]],
+                catchupTenth[[1]],
+                catchupNone[[1]]) %>%
+        ggplot() +
+        geom_line(aes(x=date,y=Third,
+                          col=factor(Catchup*100),
+                         group=factor(Catchup))#,#,
+                     #col="#333333"
+                  #size=2
+                     ) +
+        ylim(c(70,100)) + geom_vline(xintercept=VWs, lty=2,size=1)+
+        xlim(as.Date(c("2015-01-01","2017-03-01")))+
+        xlab("Week of First Birthday") +
+        ylab("Third Dose Coverage \n at 1-year old (%)")+
+        # geom_text(inherit.aes=FALSE,data=VWlabels,
+        #                   aes(x=x,y=y,label=labels),
+        #                   angle=0, #hjust="left",
+        #                   fontface="bold")+
+       
+        theme(axis.title=element_text(size=10,face="bold"))+
+        scale_color_brewer(name="Catch-Up (%)",palette = "Set1")+
+        theme_cowplot()+
+        guides(colour = guide_legend(reverse=T))
+
+
+dt <- catchupFull[[2]] %>% group_by(date) %>%
+        summarize(First=sum(First),
+                  Second=sum(Second),
+                  Third=sum(Third)) %>%
+        gather(dose,count,-date)
+#dt %>% group_by(date) %>% summarize(count=sum(count)) %>% arrange(desc(count))
+
+f5c <- dt %>%  ggplot() + geom_bar(stat="identity",
+                                    aes(x=date,y=count/2559,fill=dose)) +
+        xlim(as.Date(c("2015-01-01","2017-03-01"))) +
+        scale_fill_grey(name="Dose",start=0.8, end=0.2)+
+        xlab("Week of Vaccination") +
+        ylab("Relative Number \n of Doses")+
+        geom_hline(yintercept=1)+
+        theme(axis.title=element_text(size=10,face="bold"))
+
+p <- plot_grid(f5b,
+          f5c+theme_cowplot(),
+          ncol=1,align="hv")#labels=c("A","B","C"))
+
+
+f5 <-plot_grid(f5a,f5b,ncol=1, align="v",
+               labels=c("A","B"))
+
+
+
+ggsave("figures/main_figures/fig5.tiff", plot=f5, height = 6, width = 8)
+ggsave("figures/main_figures/fig5.pdf", plot=f5, height = 6, width = 8)
+ggsave("figures/main_figures/fig5.png", plot=f5, height = 6, width = 8)
+
+
+```
+
+### Get coverage and lateness estimates for the text???
+
+```{r}
+# 
+# KM.DTP<- KMestim(analysis.DTP) %>% mutate(antigen = "DTP")
+# KM.PCV10<- KMestim(analysis.PCV10) %>% mutate(antigen = "PCV10")
+# KM.Rota<- KMestim(analysis.Rota) %>% mutate(antigen = "Rota")
+# 
+# KM.total <- bind_rows(KM.DTP,KM.PCV10,KM.Rota) %>%
+#         filter(!(dose == "Third" & antigen == "Rota"))
+# 
+# # Coverage
+# dfCov1 <- KM.total%>% filter(type=="coverage"& dose == "First")
+# dfCov2 <- KM.total%>% filter(type=="coverage"& dose == "Second")
+# dfCov3 <- KM.total%>% filter(type=="coverage"& dose == "Third")
+# 
+# # Timeliness
+# dfLat1 <- KM.total %>% filter(type =="notLate" & dose == "First") #%>%
+#         #left_join(dfCov1, by =c("strata","antigen")) %>%
+#         #mutate(pLate=round(1-cov.x/cov.y,2)) %>%
+#         #select(dose.x,strata,antigen,pLate)
+#         
+#         
+# dfLat2 <- KM.total %>% filter(type =="notLate" & dose == "Second") #%>%
+#         # left_join(dfCov1, by =c("strata","antigen")) %>%
+#         # left_join(dfCov2, by =c("strata","antigen")) %>%
+#         # mutate(pLate=round(1-cov.x*cov.y/cov,2))%>%
+#         # select(dose.x,strata,antigen,pLate)
+# 
+# dfLat3 <- KM.total %>% filter(type =="notLate" & dose == "Third")  #%>%
+#         # left_join(dfCov2, by =c("strata","antigen")) %>%
+#         # left_join(dfCov3, by =c("strata","antigen")) %>%
+#         # mutate(pLate=round(1-cov.x*cov.y/cov,2))%>%
+#         # select(dose.x,strata,antigen,pLate)
+# 
+# 
+# 
+# 
+# hey <- left_join(dfLat1,dfLat2, by=c("strata","antigen")) %>%
+#         left_join(dfLat3, by=c("strata","antigen")) %>%
+#         filter(str_sub(strata,1,8)=="District")
+# 
+# left_join(dfLat1,dfLat2, by=c("strata","antigen")) %>%
+#         left_join(dfLat3, by=c("strata","antigen")) %>%
+#         filter(str_sub(strata,1,8)!="District" &
+#                        strata!="Overall") %>%
+#         ggplot() + geom_line(aes(x=strata,y=cov,group=antigen,col=antigen))
+# 
+
+
+```
+
+
+

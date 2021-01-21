@@ -1,0 +1,408 @@
+---
+title: "Main Text Statistics"
+author: "Forrest Jones"
+output:
+        html_document:
+            toc: TRUE
+            toc_depth: 3
+            toc_float:
+                  collapsed: TRUE
+            theme: journal
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r getdata, echo=FALSE,message=FALSE,warning=FALSE}
+# get functions
+source('utils.R')
+
+# #bring in the data
+analysis <- importTidy()
+
+analysis.DTP <- analysis[[1]]
+analysis.PCV10 <- analysis[[2]]
+analysis.Rota <- analysis[[3]]
+
+```
+
+
+## Abstract
+
+All numbers can be found in Figure 2 and Table S2
+
+## Introduction
+
+No numbers calculated
+
+## Materials and Methods
+
+### National administrative data on vaccine delivery
+
+```{r}
+
+distInterest <- c("Mahajanga I","MAHAJANGA I",
+                  "MAROVOAY",
+                  "MANAKARA-ATSIMO",
+                  "toliary i","Toliary I","TOLIARY I",
+                  "Toliary II","TOLIARY II",
+                  "VOHIPENO"
+                  )
+
+births <- read_csv("births.csv") %>%
+                summarize(LiveBirths=sum(LiveBirths),
+                          SurvivingInfants=sum(SurvivingInfants))
+sum(births$LiveBirths)
+
+read_csv("births.csv") %>%
+                  filter(District_Name %in% distInterest) %>%
+                summarize(LiveBirths=sum(LiveBirths)) %>%
+                mutate(percent=LiveBirths/sum(births$LiveBirths)
+)
+
+#get number of births in 2015 and 2016 for each district              
+read_csv("births.csv") %>%
+                 filter(District_Name %in% distInterest) %>%
+                  mutate(District_Name= recode(District_Name,
+                                   "MAHAJANGA I"="Mahajanga I",
+                                    "MAROVOAY"="Marovoay",
+                                   "MANAKARA-ATSIMO"="Manakara",
+                                   "toliary i"="Tulear I",
+                                   "Toliary I"="Tulear I",
+                                   "TOLIARY I"="Tulear I",
+                                   "Toliary II"="Tulear II",
+                                   "TOLIARY II"="Tulear II",
+                                   "VOHIPENO"="Vohipeno"     
+                                        )) %>%
+                #urban
+                mutate(
+                        urban=ifelse(District_Name %in% c("Mahajanga I",
+                                                          "Tulear I",
+                                                          "Manakara"
+                                                          ),1,0)) %>%
+                group_by(District_Name,urban) %>%
+                summarize(LiveBirths=sum(LiveBirths),
+                          SurvivingInfants=sum(SurvivingInfants)) 
+
+
+```
+
+### Individual vaccination card data (VCD)
+
+```{r}
+vcard <- read_csv("vaccard_final_KM.csv")
+#total number of cards
+nrow(vcard)
+
+#total cards in 2015 and 2017
+vcard$DDN <- as.Date(vcard$DDN,format="%m/%d/%Y")
+
+vcard %>%  filter(DDN > as.Date("12/31/2014",format="%m/%d/%Y")) %>%
+                filter(DDN < as.Date("1/1/2017",format="%m/%d/%Y")) %>%
+                filter(is.na(DDN)==FALSE) %>%
+                nrow()
+
+
+# cards used in the analysis dataset
+analysis[[1]] %>% nrow()
+
+```
+
+### Estimation of vaccine coverage and timeliness from the vaccine card database
+
+
+## Results
+
+### Estimation of administrative coverage from national administrative data
+
+
+```{r}
+
+#national level coverage
+natcov<-read_csv("nad_data.csv", col_types = paste(rep("c",189),sep="", collapse="")) %>%
+                filter(Year %in% c(2015, 2016)) %>%
+                summarize(
+
+                          DTP1=sum(as.numeric(DHHTotal),na.rm = TRUE),
+                          DTP2=sum(as.numeric(DHH2Total),na.rm = TRUE),
+                          DTP3=sum(as.numeric(DHH3Total),na.rm = TRUE),
+
+                          PCV1=sum(as.numeric(Pneumo1_Total),na.rm = TRUE),
+                          PCV2=sum(as.numeric(Pneumo2_Total),na.rm = TRUE),
+                          PCV3=sum(as.numeric(Pneumo3_Total),na.rm = TRUE),
+
+                          Rota1=sum(as.numeric(Rota1_Total),na.rm = TRUE),
+                          Rota2=sum(as.numeric(Rota2_Total),na.rm = TRUE)
+
+                          ) 
+round(natcov/sum(births$LiveBirths),2)
+
+```
+
+### Estimation of vaccine coverage and timeliness from the vaccine card database
+
+Vaccination coverage and timeliness did not always correlate....
+
+```{r}
+
+weightedDF.DTP <- analysis.DTP %>% createWeightedDF()
+weightedDF.PCV10 <- analysis.PCV10 %>% createWeightedDF()
+weightedDF.Rota <- analysis.Rota %>% createWeightedDF()
+
+#median for DTP
+survfit(Surv(T1,D1) ~ 1, data = weightedDF.DTP)
+survfit(Surv(T2, D2) ~ 1, data = weightedDF.DTP,weights=W2)
+survfit(Surv(T3, D3) ~ 1, data = weightedDF.DTP,weights=W3)
+
+#median for PCV10
+survfit(Surv(T1,D1) ~ 1, data = weightedDF.PCV10)
+survfit(Surv(T2, D2) ~ 1, data = weightedDF.PCV10,weights=W2)
+survfit(Surv(T3, D3) ~ 1, data = weightedDF.PCV10,weights=W3)
+
+#median for Rota
+survfit(Surv(T1,D1) ~ 1, data = weightedDF.Rota)
+survfit(Surv(T2, D2) ~ 1, data = weightedDF.Rota,weights=W2)
+
+# figure 2e table
+f2e_tab <- stratifyCovLat(analysis.DTP,"District")[[2]] %>%
+                mutate(pLate=round(lateness,2)) %>%
+                mutate(District=factor(stratum, levels=levels(analysis.DTP$District),
+                                              labels= c("MAH","MAR",
+                                                        "TU1","TU2",
+                                                        "MAN","VOH"))) %>%
+                mutate(urban = ifelse(stratum %in% c("MAHAJANGA I","MANAKARA","TULEAR I"),
+                                      "Urban","Rural"),
+                       urban=factor(urban,levels=c("Urban","Rural")))
+
+
+f2e_tab %>% arrange(dose,pLate)
+
+# figure 2f table
+f2f_tab <-stratifyCovLat(analysis.DTP,"birth.month")[[2]] %>%
+                mutate(pLate=round(lateness,2)) %>%
+                mutate(birth.month=factor(as.numeric(stratum),levels=1:12))
+f2f_tab %>% arrange(dose,pLate)
+
+```
+
+Among the children who received their first dose on time...
+
+```{r}
+
+late_tab <- NULL
+
+for(d in 1:3){
+        
+        
+        #create vaccine specific weighted df
+        tmp_df <- analysis[[d]]
+        tmp_df <- createWeightedDF(tmp_df)
+        vax <- c("DTP","PCV10","Rota")[d]
+        
+        
+        #second dose coverage by timeliness
+        tmp_df_1ontime <- filter(tmp_df,V1.timeliness == "OnTime")
+        tmp_df_1late   <- filter(tmp_df,V1.timeliness == "Late")
+        
+        fit_2ontime    <- survfit(Surv(T2, D2) ~ 1, 
+                                  data = tmp_df_1ontime ,weights=W2)
+        fit_2late    <- survfit(Surv(T2, D2) ~ 1, 
+                                  data = tmp_df_1late,weights=W2)
+        
+        #third dose coverage by timeliness
+        tmp_df_2ontime <- filter(tmp_df,V2.timeliness == "OnTime")
+        tmp_df_2late   <- filter(tmp_df,V2.timeliness == "Late")
+        
+        fit_3ontime    <-survfit(Surv(T3, D3) ~ 1, 
+                                  data = tmp_df_2ontime,weights=W3)
+        fit_3late    <-survfit(Surv(T3, D3) ~ 1, 
+                                  data = tmp_df_2late,weights=W3)
+        
+        covdf <- bind_rows(
+                (1-getSurv(fit_2ontime,52)) %>%
+                        mutate(
+                                dose="Second",
+                                timeliness="On Time"
+                        ),
+                (1-getSurv(fit_2late,52))%>%
+                        mutate(
+                                dose="Second",
+                                timeliness="Late"
+                        ),
+                (1-getSurv(fit_3ontime,52))%>%
+                        mutate(
+                                dose="Third",
+                                timeliness="On Time"
+                        ),
+                (1-getSurv(fit_3late,52))%>%
+                        mutate(
+                                dose="Third",
+                                timeliness="Late"
+                        )
+                )%>%
+                rename(cov=surv) %>%
+                #switch upperbound and lowerbound
+                rename(tmp=lb,
+                       lb=ub) %>%
+                rename(ub=tmp) %>%
+                mutate(antigen=vax)
+
+                late_tab <- bind_rows(covdf,late_tab)
+
+}
+
+late_tab %>% mutate(cov=round(cov,2),
+                    ub=round(ub,2),
+                    lb=round(lb,2))
+
+
+
+```
+
+
+### Evaluation of catch-up campaigns
+
+```{r}
+
+
+vwDF <- data.frame(Start= as.Date(c("2015-05-11","2015-10-28","2016-05-09")),
+           End = as.Date(c("2015-05-15", "2015-11-08", "2016-05-13")))
+
+
+fullobs1 <- analysis.DTP %>%
+        #only include those with full follow-up time and that were vaccinated
+        # filter(DDN < (last.obs-365)) %>%
+        # filter(year(V1.date)==2016) %>%
+        filter(V1.SA.censor==1) %>%
+        #determine if first dose occurred during vaccination week
+        mutate(vwStatus1=ifelse(V1.date>=vwDF$Start[1] & V1.date<=vwDF$End[1],"VW","Routine"),
+               vwStatus1=ifelse(V1.date>=vwDF$Start[2] & V1.date<=vwDF$End[2],"VW",vwStatus1),
+               vwStatus1=ifelse(V1.date>=vwDF$Start[3] & V1.date<=vwDF$End[3],"VW",vwStatus1)
+               ) %>%
+        mutate(V1.timeliness=recode(V1.timeliness,
+                                    "Early"="Early/On Time",
+                                    "OnTime"="Early/On Time"
+                                    )) 
+
+
+
+fullobs2 <- analysis.DTP %>%
+        #only include those with full follow-up time and that were vaccinated
+        # filter(DDN < (last.obs-365)) %>%
+        filter(V2.SA.censor==1) %>%
+        # filter(year(V2.date)==2016) %>%
+        #determine if first dose occurred during vaccination week
+        mutate(vwStatus2=ifelse(V2.date>=vwDF$Start[1] & V2.date<=vwDF$End[1],"VW","Routine"),
+               vwStatus2=ifelse(V2.date>=vwDF$Start[2] & V2.date<=vwDF$End[2],"VW",vwStatus2),
+               vwStatus2=ifelse(V2.date>=vwDF$Start[3] & V2.date<=vwDF$End[3],"VW",vwStatus2),
+               
+               vwStatus3=ifelse(V3.date>=vwDF$Start[1] & V3.date<=vwDF$End[1],"VW","Routine"),
+               vwStatus3=ifelse(V3.date>=vwDF$Start[2] & V3.date<=vwDF$End[2],"VW",vwStatus3),
+               vwStatus3=ifelse(V3.date>=vwDF$Start[3] & V3.date<=vwDF$End[3],"VW",vwStatus3)
+               ) %>%
+        mutate(V2.timeliness=recode(V2.timeliness,
+                                    "Early"="Early/On Time",
+                                    "OnTime"="Early/On Time"
+                                    ))
+
+
+fullobs3 <- analysis.DTP %>%
+        #only include those with full follow-up time and that were vaccinated
+        # filter(DDN < (last.obs-365)) %>%
+        filter(V3.SA.censor==1) %>%
+        # filter(year(V3.date)==2016) %>%
+        #determine if first dose occurred during vaccination week
+        mutate(vwStatus3=ifelse(V3.date>=vwDF$Start[1] & V3.date<=vwDF$End[1],"VW","Routine"),
+               vwStatus3=ifelse(V3.date>=vwDF$Start[2] & V3.date<=vwDF$End[2],"VW",vwStatus3),
+               vwStatus3=ifelse(V3.date>=vwDF$Start[3] & V3.date<=vwDF$End[3],"VW",vwStatus3)
+               ) %>%
+        mutate(V3.timeliness=recode(V3.timeliness,
+                                    "Early"="Early/On Time",
+                                    "OnTime"="Early/On Time"
+                                    ))
+
+#investigation of number of doses given during vaccination week
+ftdf1 <- bind_rows(fullobs1 %>%
+                        group_by(vwStatus1,V1.timeliness) %>%
+                        summarize(count=n()) %>%
+                        mutate(dose="First")%>%
+                        rename(vwStatus=vwStatus1) %>%
+                        spread(V1.timeliness,count),
+                  fullobs2 %>%
+                        group_by(vwStatus2,V2.timeliness) %>%
+                        summarize(count=n())%>%
+                        mutate(dose="Second")%>%
+                        rename(vwStatus=vwStatus2)%>%
+                        spread(V2.timeliness,count),
+                  fullobs3 %>%
+                        group_by(vwStatus3,V3.timeliness) %>%
+                        summarize(count=n())%>%
+                        mutate(dose="Third") %>%
+                        rename(vwStatus=vwStatus3) %>%
+                        spread(V3.timeliness,count),
+                  )  %>% 
+        mutate(Total=`Early/On Time`+Late,
+               `Percent Late`=round(Late/Total*100,1)) %>%
+        rename(Dose=dose,
+               Type=vwStatus)
+
+ftdf1[,c(2,1,3:6)] %>% flextable() %>% autofit()
+
+#investigation of TTV
+
+ftdf2 <- bind_rows(
+        
+        fullobs1 %>% group_by(vwStatus1)%>%
+        summarize(medianTTV=median(V1.SA.time),
+                       lqTTV=quantile(V1.SA.time,0.25),
+                       uqTTV=quantile(V1.SA.time,0.75)
+                       ) %>%
+        mutate(Dose="First") %>%
+        rename(Type=vwStatus1),
+
+        fullobs2 %>% group_by(vwStatus2)%>%
+                summarize(medianTTV=median(V2.SA.time),
+                               lqTTV=quantile(V2.SA.time,0.25),
+                               uqTTV=quantile(V2.SA.time,0.75)
+                               ) %>%
+                mutate(Dose="Second")%>%
+                rename(Type=vwStatus2),
+
+        fullobs3 %>% group_by(vwStatus3)%>%
+                summarize(medianTTV=median(V3.SA.time),
+                               lqTTV=quantile(V3.SA.time,0.25),
+                               uqTTV=quantile(V3.SA.time,0.75)
+                               ) %>%
+                mutate(Dose="Third")%>%
+                rename(Type=vwStatus3)
+) %>% mutate(
+        medianTTV=round(medianTTV,1),
+        lqTTV = round(lqTTV,1),
+        uqTTV = round(uqTTV,1)
+) %>%
+        mutate("Median Time to Vaccination (IQR)" =paste0(medianTTV," (",
+                                                           lqTTV,"-",uqTTV,")")) %>%
+        select(-medianTTV,-lqTTV,-uqTTV)
+
+ftdf2[,c(2,1,3)] %>% flextable()  %>% autofit()
+
+```
+
+### Simulation of catch-up campaigns
+
+```{r}
+
+catchupNone <- read_rds("data/generated_data/simulationfiles/catchupNone.rds")
+
+summary(catchupNone[[1]])
+
+
+```
+
+
+## Discussion
+
+No text to check here
