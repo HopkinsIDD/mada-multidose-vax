@@ -1,3 +1,5 @@
+source("code/utils.R")
+
 vcard <- read_csv("data/raw_data/vaccard_final_KM.csv")
 
 #limit dataset to those born in 2015 and 2016
@@ -6,7 +8,7 @@ analysis1 <- vcard %>%
         filter(year(DDN) %in% c(2015,2016))
 
 
-
+#find cards where vaccination of second and third dose occurred after missing prior ones
 DTPissues1 <- analysis1 %>% 
                 filter( (DTP1==0 & DTP2==1) |
                         (DTP1==0 & DTP3==1) |
@@ -151,8 +153,8 @@ tidyVariables<-function(data, antigen){
                         birth.year= year(DDN),
                         birth.month= month(DDN))
         
-        #administratively censoring at data collection
-        last.obs <- as.Date("2017-02-01") 
+        # administratively censoring at data collection
+        last.obs <- as.Date("2017-02-01")
         subdata <- subdata %>%
                         mutate(
                                 #ensure that all observations are before the administrative censoring date
@@ -162,53 +164,40 @@ tidyVariables<-function(data, antigen){
                                 V1.date=as.Date(ifelse(V1.date>last.obs,NA,as.character(V1.date))),
                                 V2.date=as.Date(ifelse(V2.date>last.obs,NA,as.character(V2.date))),
                                 V3.date=as.Date(ifelse(V3.date>last.obs,NA,as.character(V3.date)))
-                        ) 
-        
-        
+                        )
+
+
         # #create survival analysis variables
         SAdata <- subdata %>% mutate(
-                        #Make cards who miss one dose to be listed as NA for future doses
-                        #this doesnt match the equations
-                        # V3 = ifelse(V2==0,NA,V3),
-                        # V2 = ifelse(V1==0,NA,V2),
 
                         # Calculate censor date to determine if observation was censored or not
                         full_observe = ifelse(DDN + 365 < last.obs,TRUE,FALSE),
                         censor_date = as.Date(ifelse(full_observe,
                                                      as.character(DDN + 365),
                                                      as.character(last.obs))),
-                        
+
                         # Determine if observation was censored
-                        V1.SA.censor = ifelse(censor_date < V1.date | is.na(V1.date) ,
-                                              0, V1),
+                        V1.SA.censor = ifelse(censor_date < V1.date | is.na(V1.date) ,0, V1),
                         V2.SA.censor = ifelse(censor_date < V2.date| is.na(V2.date), 0, V2),
                         V3.SA.censor = ifelse(censor_date < V3.date| is.na(V3.date), 0, V3),
-                        
-                        # V3.SA.censor = ifelse(V2.SA.censor==0, NA, V3.SA.censor),
-                        # V2.SA.censor = ifelse(V1.SA.censor==0, NA, V2.SA.censor),
-                        
+
                         #Define T1, T2 and T3
-                        T1.SA.time =   ifelse(V1.SA.censor==1,
-                                                         V1.date - DDN, censor_date - DDN),
-                        T2.SA.time  =  ifelse(V2.SA.censor==1,
-                                                         V2.date - DDN, censor_date - DDN),
-                        T2.SA.time =   ifelse(V1.SA.censor==0,
-                                              T1.SA.time,T2.SA.time),
-                        T3.SA.time  =  ifelse(V3.SA.censor==1,
-                                                         V3.date - DDN, censor_date - DDN),
-                        T3.SA.time =   ifelse(V2.SA.censor==0,
-                                              T2.SA.time,T3.SA.time),
-                        
+                        T1.SA.time =  ifelse(V1.SA.censor==1,V1.date - DDN, censor_date - DDN),
+                        T2.SA.time =  ifelse(V2.SA.censor==1,V2.date - DDN, censor_date - DDN),
+                        T3.SA.time =  ifelse(V3.SA.censor==1,V3.date - DDN, censor_date - DDN),
+                        T1.SA.time =  T1.SA.time/7, #weeks
+                        T2.SA.time =  T2.SA.time/7, #weeks
+                        T3.SA.time =  T3.SA.time/7, #weeks
+
                         #Define B1, B2 and B3
                         B1.SA.time =  T1.SA.time,
-                        B2.SA.time =  ifelse(V1.SA.censor==0, 0,
-                                             T2.SA.time- T1.SA.time),
-                        B3.SA.time =  ifelse(V2.SA.censor==0, 0,
-                                             T3.SA.time- T2.SA.time)
+                        B2.SA.time =  T2.SA.time- T1.SA.time,
+                        B3.SA.time =  T3.SA.time- T2.SA.time
                         
-)
 
-               
+                )
+
+
 
         # Define timeliness
         final <- SAdata %>%
@@ -231,44 +220,180 @@ tidyVariables<-function(data, antigen){
                                                                 right = FALSE,
                                                                 labels=c("Early","OnTime","Late")))
                         )
-                )%>%
-                mutate(
-                        V2.timeliness = ifelse(is.na(V2.timeliness),V1.timeliness,V2.timeliness),
-                        V3.timeliness = ifelse(is.na(V3.timeliness),V2.timeliness,V3.timeliness)
-
                 )
 
-        return(SAdata)
+        return(final)
         
 } 
 
 
 
 analysis.DTP <- tidyVariables(analysis4,"DTP")
-tidyVariables(analysis4,"PCV10")
-tidyVariables(analysis4,"Rota")
+analysis.PCV10 <- tidyVariables(analysis4,"DTP")
+analysis.Rota <- tidyVariables(analysis4,"DTP")
+
+analysis <- list(analysis.DTP,analysis.PCV10,analysis.Rota)
+
+write_csv(analysis.DTP, "data/tidy_data/analysisDTP.csv")
+write_csv(analysis.PCV10, "data/tidy_data/analysisPCV10.csv")
+write_csv(analysis.Rota, "data/tidy_data/analysisRota.csv")
+
+write_rds(analysis,"data/tidy_data/analysisList.rds")
 
 
+# survfit(data = analysis.DTP,
+#         Surv(B1.SA.time,V1.SA.censor) ~ 1,
+#         type = "kaplan-meier",
+#         error = "greenwood",
+#         conf.type = "log-log") %>% plot()
+# 
+# survfit(data = analysis.DTP,
+#         Surv(B2.SA.time,V2.SA.censor) ~ 1,
+#         type = "kaplan-meier",
+#         error = "greenwood",
+#         conf.type = "log-log") %>% lines()
+# 
+# survfit(data = analysis.DTP,
+#         Surv(B3.SA.time,V3.SA.censor) ~ 1,
+#         type = "kaplan-meier",
+#         error = "greenwood",
+#         conf.type = "log-log") %>% lines()
 
-survfit(data = analysis.DTP,
-        Surv(T1.SA.time,V1.SA.censor) ~ 1,
-        type = "kaplan-meier",
-        error = "greenwood",
-        conf.type = "log-log") %>% plot()
-
-survfit(data = analysis.DTP,
-        Surv(T2.SA.time,V2.SA.censor) ~ 1,
-        type = "kaplan-meier",
-        error = "greenwood",
-        conf.type = "log-log") %>% lines()
-
-survfit(data = analysis.DTP,
-        Surv(T3.SA.time,V3.SA.censor) ~ 1,
-        type = "kaplan-meier",
-        error = "greenwood",
-        conf.type = "log-log") %>% lines()
-
-
+# tidyVariables<-function(data, antigen){
+#         #select the antigen we are looking at
+#         if (antigen == "DTP"){
+#                 subdata <- data %>% 
+#                         select(ID,Region,District,HCC,DDN,
+#                                #DTP Vaccine
+#                                DTP1,DTP2,DTP3,DTPHBHiB1_date,DTPHBHiB2_date,DTPHBHiB3_date)
+#         }
+#         
+#         if (antigen == "PCV10"){
+#                 subdata <- data %>% 
+#                         select(ID,Region,District,HCC,DDN,
+#                                #PCV Vaccine
+#                                PCV10_1,PCV10_2,PCV10_3, PCV10_1_date, PCV10_2_date, PCV10_3_date)
+#         }
+#         
+#         if (antigen == "Rota"){
+#                 subdata <- data %>% 
+#                         select(ID,Region,District,HCC, DDN,
+#                                #Rota Vaccine
+#                                rota1,rota2, rota3, rota_1_date, rota_2_date,rota_3_date)
+#         }
+#         
+#         #change the variable names
+#         colnames(subdata)[6:11] <- c("V1","V2","V3","V1.date","V2.date","V3.date")
+#         
+#         
+#         #Fix geographic variables and birth
+#         subdata <- subdata %>% mutate(District=factor(District,
+#                                                       levels = c("MAHAJANGA I",
+#                                                                  "MAROVOAY" ,
+#                                                                  "TULEAR I" ,
+#                                                                  "TULEAR II",
+#                                                                  "MANAKARA",
+#                                                                  "VOHIPENO")),
+#                                       urban = ifelse(District %in% 
+#                                                              c("MAHAJANGA I",
+#                                                                "MANAKARA",
+#                                                                "TULEAR I"),
+#                                                      1,0)) %>%
+#                 mutate(
+#                         birth.yearmonth=format(DDN, '%Y-%m'),
+#                         birth.year= year(DDN),
+#                         birth.month= month(DDN))
+#         
+#         # administratively censoring at data collection
+#         last.obs <- as.Date("2017-02-01")
+#         subdata <- subdata %>%
+#                 mutate(
+#                         #ensure that all observations are before the administrative censoring date
+#                         V1 =ifelse(V1.date>last.obs,0,1),
+#                         V2 =ifelse(V2.date>last.obs,0,1),
+#                         V3 =ifelse(V3.date>last.obs,0,1),
+#                         V1.date=as.Date(ifelse(V1.date>last.obs,NA,as.character(V1.date))),
+#                         V2.date=as.Date(ifelse(V2.date>last.obs,NA,as.character(V2.date))),
+#                         V3.date=as.Date(ifelse(V3.date>last.obs,NA,as.character(V3.date)))
+#                 )
+#         
+#         
+#         # #create survival analysis variables
+#         SAdata <- subdata %>% mutate(
+#                 #Make cards who miss one dose to be listed as NA for future doses
+#                 #this doesnt match the equations
+#                 # V3 = ifelse(V2==0,NA,V3),
+#                 # V2 = ifelse(V1==0,NA,V2),
+#                 
+#                 # Calculate censor date to determine if observation was censored or not
+#                 full_observe = ifelse(DDN + 365 < last.obs,TRUE,FALSE),
+#                 censor_date = as.Date(ifelse(full_observe,
+#                                              as.character(DDN + 365),
+#                                              as.character(last.obs))),
+#                 
+#                 # Determine if observation was censored
+#                 V1.SA.censor = ifelse(censor_date < V1.date | is.na(V1.date) ,
+#                                       0, V1),
+#                 V2.SA.censor = ifelse(censor_date < V2.date| is.na(V2.date), 0, V2),
+#                 V3.SA.censor = ifelse(censor_date < V3.date| is.na(V3.date), 0, V3),
+#                 
+#                 # V3.SA.censor = ifelse(V2.SA.censor==0, NA, V3.SA.censor),
+#                 # V2.SA.censor = ifelse(V1.SA.censor==0, NA, V2.SA.censor),
+#                 
+#                 #Define T1, T2 and T3
+#                 T1.SA.time =   ifelse(V1.SA.censor==1,
+#                                       V1.date - DDN, censor_date - DDN),
+#                 T2.SA.time  =  ifelse(V2.SA.censor==1,
+#                                       V2.date - DDN, censor_date - DDN),
+#                 T2.SA.time =   ifelse(V1.SA.censor==0,
+#                                       T1.SA.time,T2.SA.time),
+#                 T3.SA.time  =  ifelse(V3.SA.censor==1,
+#                                       V3.date - DDN, censor_date - DDN),
+#                 T3.SA.time =   ifelse(V2.SA.censor==0,
+#                                       T2.SA.time,T3.SA.time),
+#                 
+#                 #Define B1, B2 and B3
+#                 B1.SA.time =  T1.SA.time,
+#                 B2.SA.time =  ifelse(V1.SA.censor==0, 0,
+#                                      T2.SA.time- T1.SA.time),
+#                 B3.SA.time =  ifelse(V2.SA.censor==0, 0,
+#                                      T3.SA.time- T2.SA.time)
+#                 
+#         )
+#         
+#         
+#         
+#         # Define timeliness
+#         final <- SAdata %>%
+#                 mutate(
+#                         V1.timeliness = ifelse(V1.SA.censor==0,
+#                                                ifelse(full_observe==TRUE,"Never","Censored"),
+#                                                as.character(cut(B1.SA.time,c(0,6,10,Inf),
+#                                                                 right = FALSE,
+#                                                                 labels=c("Early","OnTime","Late")))
+#                         ),
+#                         V2.timeliness = ifelse(V2.SA.censor==0,
+#                                                ifelse(full_observe==TRUE,"Never","Censored"),
+#                                                as.character(cut(B2.SA.time,c(0,4,8,Inf),
+#                                                                 right = FALSE,
+#                                                                 labels=c("Early","OnTime","Late")))
+#                         ),
+#                         V3.timeliness = ifelse(V3.SA.censor==0,
+#                                                ifelse(full_observe==TRUE,"Never","Censored"),
+#                                                as.character(cut(B3.SA.time,c(0,4,8,Inf),
+#                                                                 right = FALSE,
+#                                                                 labels=c("Early","OnTime","Late")))
+#                         )
+#                 )%>%
+#                 mutate(
+#                         V2.timeliness = ifelse(is.na(V2.timeliness),V1.timeliness,V2.timeliness),
+#                         V3.timeliness = ifelse(is.na(V3.timeliness),V2.timeliness,V3.timeliness)
+#                         
+#                 )
+#         
+#         return(final)
+#         
+# } 
 
                     
 

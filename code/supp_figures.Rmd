@@ -25,10 +25,10 @@ knitr::opts_chunk$set(#fig.width=12, fig.height=8, fig.path='Figs/',
 
 ```{r getdata}
 # get functions
-source('utils.R')
+source('code/utils.R')
 
 # #bring in the data
-analysis <- importTidy()
+analysis <- read_rds("data/tidy_data/analysisList.rds")
 
 analysis.DTP <- analysis[[1]]
 analysis.PCV10 <- analysis[[2]]
@@ -81,7 +81,7 @@ distInterest <- c("Mahajanga I","MAHAJANGA I",
                   "VOHIPENO"
                   )
 
-nad_data1 <- read_csv("nad_data.csv", col_types = paste(rep("c",189),sep="", collapse="")) %>%
+nad_data1 <- read_csv("data/raw_data/nad_data.csv", col_types = paste(rep("c",189),sep="", collapse="")) %>%
                 filter(District_Name %in% distInterest) %>%
                 mutate(month = as.Date(paste(Year,Month,"01",sep="-"))) %>%
                 group_by(#District_Name#,
@@ -173,7 +173,7 @@ distInterest <- c("Mahajanga I","MAHAJANGA I",
                   )
 
 #New nad coverage table
-nad_data2 <- read_csv("nad_data.csv", col_types = paste(rep("c",189),sep="", collapse="")) %>%
+nad_data2 <- read_csv("data/raw_data/nad_data.csv", col_types = paste(rep("c",189),sep="", collapse="")) %>%
                 
                 #district formatting
                 filter(District_Name %in% distInterest) %>%
@@ -216,7 +216,7 @@ nad_data2 <- read_csv("nad_data.csv", col_types = paste(rep("c",189),sep="", col
                           )
 
 #get number of births in 2015 and 2016 for each district              
-births <- read_csv("births.csv") %>%
+births <- read_csv("data/raw_data/births.csv") %>%
                   filter(District_Name %in% distInterest) %>%
                   mutate(District_Name= recode(District_Name,
                                    "MAHAJANGA I"="Mahajanga I",
@@ -544,9 +544,12 @@ Black dashed lines indicate the scheduled week of vaccination.
 ```{r fig.height = 9.5, fig.width = 7}
 
 
-fs2a <- weightedKMcurves(analysis.DTP) %>% ggplot(aes(x=time,y=vaccinated/11142*100,col=dose,group=dose,
+
+ncards <-nrow(analysis.DTP)
+
+fs2a <- weightedKMcurves(analysis.DTP) %>% ggplot(aes(x=time,y=vaccinated/ncards*100,col=dose,group=dose,
                        fill=dose))+
-        geom_line()+geom_ribbon(aes(ymin=lower/11142*100,ymax=upper/11142*100),
+        geom_line()+geom_ribbon(aes(ymin=lower/ncards*100,ymax=upper/ncards*100),
                                 col=NA,
                                 alpha=0.4)+
         scale_y_continuous("Percentage vaccinated (%)",limits = c(0,100))+
@@ -560,9 +563,9 @@ fs2a <- weightedKMcurves(analysis.DTP) %>% ggplot(aes(x=time,y=vaccinated/11142*
         theme(legend.position = c(.75,.25))
 
 fs2b <- weightedKMcurves(analysis.PCV10) %>%
-        ggplot(aes(x=time,y=vaccinated/11142*100,col=dose,group=dose,
+        ggplot(aes(x=time,y=vaccinated/ncards*100,col=dose,group=dose,
                        fill=dose))+
-        geom_line()+geom_ribbon(aes(ymin=lower/11142*100,ymax=upper/11142*100),
+        geom_line()+geom_ribbon(aes(ymin=lower/ncards*100,ymax=upper/ncards*100),
                                 col=NA,
                                 alpha=0.4)+
         scale_y_continuous("Percentage vaccinated (%)",limits = c(0,100))+
@@ -577,9 +580,9 @@ fs2b <- weightedKMcurves(analysis.PCV10) %>%
 
 fs2c <- weightedKMcurves(analysis.Rota) %>%
         filter(dose!="Third") %>%
-        ggplot(aes(x=time,y=vaccinated/11142*100,col=dose,group=dose,
+        ggplot(aes(x=time,y=vaccinated/ncards*100,col=dose,group=dose,
                        fill=dose))+
-        geom_line()+geom_ribbon(aes(ymin=lower/11142*100,ymax=upper/11142*100),
+        geom_line()+geom_ribbon(aes(ymin=lower/ncards*100,ymax=upper/ncards*100),
                                 col=NA,
                                 alpha=0.4)+
         scale_y_continuous("Percentage vaccinated (%)",limits = c(0,100))+
@@ -594,87 +597,6 @@ fs2c <- weightedKMcurves(analysis.Rota) %>%
 
 
 plot_grid(fs2a,fs2b,fs2c,ncol =1,align="v", labels=c("A","B","C"))
-
-
-# ggsave("posterfigures/kmfig.png",plot=kmfig,
-#        height = 10, width = 7)
-
-#OLD Figure S2
-# combodf <- bind_rows(
-#         analysis.DTP %>% select(V1.SA.time,V1.SA.censor) %>%
-#                 rename(time=V1.SA.time, censor = V1.SA.censor) %>%
-#                 mutate(dose= "First", vaccine="DTP"),
-#         analysis.DTP %>% select(V2.SA.time2,V2.SA.censor2) %>%
-#                 rename(time=V2.SA.time2, censor = V2.SA.censor2) %>%
-#                 mutate(dose= "Second", vaccine="DTP"),
-#         analysis.DTP %>% select(V3.SA.time2,V3.SA.censor2) %>%
-#                 rename(time=V3.SA.time2, censor = V3.SA.censor2) %>%
-#                 mutate(dose= "Third", vaccine="DTP"),
-#         analysis.PCV10 %>% select(V1.SA.time,V1.SA.censor) %>%
-#                 rename(time=V1.SA.time, censor = V1.SA.censor) %>%
-#                 mutate(dose= "First", vaccine="PCV10"),
-#         analysis.PCV10 %>% select(V2.SA.time2,V2.SA.censor2) %>%
-#                 rename(time=V2.SA.time2, censor = V2.SA.censor2) %>%
-#                 mutate(dose= "Second", vaccine="PCV10"),
-#         analysis.PCV10 %>% select(V3.SA.time2,V3.SA.censor2) %>%
-#                 rename(time=V3.SA.time2, censor = V3.SA.censor2) %>%
-#                 mutate(dose= "Third", vaccine="PCV10"),
-#         analysis.Rota %>% select(V1.SA.time,V1.SA.censor) %>%
-#                 rename(time=V1.SA.time, censor = V1.SA.censor) %>%
-#                 mutate(dose= "First", vaccine="Rotavirus"),
-#         analysis.Rota %>% select(V2.SA.time2,V2.SA.censor2) %>%
-#                 rename(time=V2.SA.time2, censor = V2.SA.censor2) %>%
-#                 mutate(dose= "Second", vaccine="Rotavirus")
-# )
-# 
-# 
-# plotcombo <- function(df){
-#         p <- df %>% survfit(data = .,
-#                         Surv(time,censor) ~ dose,
-#                         type = "kaplan-meier",
-#                         error = "greenwood",
-#                         conf.type = "log-log") %>%
-#                 ggsurvplot(., data = df,
-#                    #palette =  c("#E7B800", "#2E9FDF"),# custom color palettes
-#                    conf.int = TRUE,
-#                    fun="event",
-#                    #legend.labs= month.name[1:12],
-#                    xlab="Age (Weeks)",
-#                    ylab="Probability of being \n vaccinated")
-# 
-#         return(p[[1]] + ylim(0,1))
-# 
-# 
-# 
-# }
-
-# pDTP <- combodf %>% filter(vaccine=="DTP") %>%
-#         plotcombo() + ggtitle("DTP")+
-#         geom_vline(xintercept=c(6,10,14),
-#                                   lty=2)+
-#         scale_colour_grey(name="Dose", start=0.8, end=0.2,labels = c('First','Second','Third'))+
-#         scale_fill_grey(name="Dose", start=0.8, end=0.2,labels = c('First','Second','Third'))+
-#         theme(legend.position = c(.75,.25))
-# 
-# pPCV10 <- combodf %>% filter(vaccine=="PCV10") %>%
-#         plotcombo() + ggtitle("PCV10")+
-#         geom_vline(xintercept=c(6,10,14),
-#                                   lty=2)+
-#         scale_colour_grey(start=0.8, end=0.2)+
-#         scale_fill_grey(start=0.8, end=0.2)+
-#         theme(legend.position = "none")
-# 
-# 
-# pRota <- combodf %>% filter(vaccine=="Rotavirus") %>%
-#         plotcombo() + ggtitle("Rotavirus")+
-#         geom_vline(xintercept=c(6,10),
-#                                   lty=2)+
-#         scale_colour_grey(start=0.8, end=0.5)+
-#         scale_fill_grey(start=0.8, end=0.5)+
-#         theme(legend.position = "none")
-
-
-
 
 
 ```
@@ -731,14 +653,14 @@ Formally, in the analysis of the second dose, each individual has an associated 
 
 For example, there might be four individuals under observation for the first dose, all of whom are born on different weeks . Individual 1 received her first dose at 6 weeks since birth. Individual 2 has a censored observation at 10 weeks since he was not vaccinated before the vaccination cards were collected. Individuals 3 and 4 both received their first dose at 12 weeks before data collection occurred:
 
-![ ](../../figures/weightexample0.png){width=300px}
+![ ](../figures/supp_figures/eqnS1_weightexample0.png){width=300px}
 
 Using the Kaplan-Meier approach, we can compute the survival function. Our time metric used in this calculation is age in weeks:
 
-![ ](../../figures/weightexample1.png){width=300px}
+![ ](../figures/supp_figures/eqnS1_weightexample1.png){width=300px}
 We can then implement the equation above to estimate the second dose weights for each individual (i.e. $w_{2i}$):
 
-![ ](../../figures/weightexample2.png){width=300px}
+![ ](../figures/supp_figures/eqnS1_weightexample2.png){width=300px}
 
 The second dose weight of Individual 1 (i.e. $w_{21}$) equals to 1 because they received their first dose prior to any individuals being censored. The second dose weight for Individual 3 and Individual 4 is 1.5 because they received their first dose after Individual 2 was censored. The second dose weight of Individual 2 is zero because we have redistributed their weight to Individual 3 and Individual 4.
 
@@ -1061,7 +983,7 @@ $$
 
 We simulated vaccination history of 1000 newborns over the first year of life, all of whom start off in the $R_0$ compartment. As newborns get older and are vaccinated through routine programs, they transition from $R_0$ to $R_1$ (first dose) to $R_2$ (second dose) to $R_3$ (third dose). We use $j$ to denote dose in this notation. Each dose compartment is also defined by $a$, the age of the child in weeks and $t$ the number of weeks spent at a particular dose.
 
-![Routine vaccination model graph.](../../figures/routineGraph.png)
+![Routine vaccination model graph.](../figures/supp_figures/eqnS3_routineGraph.png)
 
 
 **Initial Conditions**
@@ -1097,7 +1019,7 @@ $$R_{3}(t=\tau,a=\alpha)=R_{3}(t=\tau-1,a=\alpha-1)$$
 
 This model simulates 1000 newborns being born for each week between January 1st 2014 and Feburary 1st 2017. Each 1000 newborn cohort uses the same equations from the routine vaccination model, but changes the rate of vaccination,$\lambda^{c}_{d}(t)$, among late individuals during six vaccination weeks, $a=w_v$ occurring in May and October of 2014, 2015, and 2016.
 
-![Vaccination week model graph.](../../figures/modelGraph.png)
+![Vaccination week model graph.](../figures/supp_figures/eqnS3_modelGraph.png)
 
 
 Specifically, the rate of vaccination depends on whether the lateness cutoff, $t^l_d$, has been passed for an individual to be effected by a  vaccination week. Recall that an individual is considered late at 10, 8, and 8 weeks for each respective dose.
@@ -1114,7 +1036,80 @@ Lastly, we assumed children who were vaccinated through vaccination weeks (as op
 
 \pagebreak
 
-## Figure S3: Weekly rates of vaccination used in the simulation
+## Figure S3: Coverage and lateness for PCV10
+
+\pagebreak
+
+## Figure S4: Coverage and lateness for Rotavirus
+
+\pagebreak
+
+
+## Figure S5: Kaplan-Meier curves for each vaccine and dose using the vaccination card database
+
+Black dashed lines indicate the scheduled week of vaccination.
+
+```{r fig.height = 9.5, fig.width = 7}
+
+ncards <-nrow(analysis.DTP)
+
+fs2a <- weightedKMcurves(analysis.DTP) %>% ggplot(aes(x=time,y=vaccinated/ncards*100,col=dose,group=dose,
+                       fill=dose))+
+        geom_line()+geom_ribbon(aes(ymin=lower/ncards*100,ymax=upper/ncards*100),
+                                col=NA,
+                                alpha=0.4)+
+        scale_y_continuous("Percentage vaccinated (%)",limits = c(0,100))+
+        scale_x_continuous("Age in weeks",limits = c(0,52),breaks=c(0,6,10,14,26,52))+
+        ggtitle("DTP")+
+        geom_vline(xintercept=c(6,10,14),
+                                  lty=2)+
+        scale_colour_grey(name="Dose", start=0.8, end=0.2,labels = c('First','Second','Third'))+
+        scale_fill_grey(name="Dose", start=0.8, end=0.2,labels = c('First','Second','Third'))+
+        theme_cowplot()+
+        theme(legend.position = c(.75,.25))
+
+fs2b <- weightedKMcurves(analysis.PCV10) %>%
+        ggplot(aes(x=time,y=vaccinated/ncards*100,col=dose,group=dose,
+                       fill=dose))+
+        geom_line()+geom_ribbon(aes(ymin=lower/ncards*100,ymax=upper/ncards*100),
+                                col=NA,
+                                alpha=0.4)+
+        scale_y_continuous("Percentage vaccinated (%)",limits = c(0,100))+
+        scale_x_continuous("Age in weeks",limits = c(0,52),breaks=c(0,6,10,14,26,52))+
+        ggtitle("PCV10")+
+        geom_vline(xintercept=c(6,10,14),
+                                  lty=2)+
+        scale_colour_grey(start=0.8, end=0.2)+
+        scale_fill_grey(start=0.8, end=0.2)+
+        theme_cowplot()+
+        theme(legend.position = "none")
+
+fs2c <- weightedKMcurves(analysis.Rota) %>%
+        filter(dose!="Third") %>%
+        ggplot(aes(x=time,y=vaccinated/ncards*100,col=dose,group=dose,
+                       fill=dose))+
+        geom_line()+geom_ribbon(aes(ymin=lower/ncards*100,ymax=upper/ncards*100),
+                                col=NA,
+                                alpha=0.4)+
+        scale_y_continuous("Percentage vaccinated (%)",limits = c(0,100))+
+        scale_x_continuous("Age in weeks",limits = c(0,52),breaks=c(0,6,10,14,26,52))+
+        ggtitle("Rotavirus")+
+        geom_vline(xintercept=c(6,10,14),
+                                  lty=2)+
+        scale_colour_grey(start=0.8, end=0.5)+
+        scale_fill_grey(start=0.8, end=0.5)+
+        theme_cowplot()+
+        theme(legend.position = "none")
+
+
+plot_grid(fs2a,fs2b,fs2c,ncol =1,align="v", labels=c("A","B","C"))
+
+
+```
+  
+\pagebreak
+
+## Figure S6: Weekly rates of vaccination used in the simulation
 
 The y-axis, the weekly rate of vaccination, was estimated from our data set on DTP vaccination. Specifically, this is the weekly probability of being vaccinated for a particular dose, given that an individual has not been vaccinated yet. (A) Weekly rates of vaccination are shown for each dose during routine vaccination. (B) Weekly rates of vaccination are shown for each dose during routine vaccination for individuals receiving their previous dose through a vaccination week catch-up campaign.
 
@@ -1168,7 +1163,7 @@ plot_grid(fs3a,
 
 \pagebreak
 
-## Figure S4: Simulated impact of catch-up campaigns with uniform routine vaccination rates.
+## Figure S7: Simulated impact of catch-up campaigns with uniform routine vaccination rates.
 
 In this sensitivity analysis, routine vaccination rates for all individuals are those shown in Figure S3A. Children vaccinated through vaccination weeks do not have decreased rates of vaccination for subsequent doses, as shown in Figure S3B. (A) The simulated coverage of the third dose of DTP vaccine of children at 1-year of age is shown on the y-axis for different levels of catch-up on VWs (black dashed lines). (B) The height of the bar indicates the relative number of doses for a perfect catch-up campaign (i.e. 100% catch-up) versus routine vaccination with now catch-up campaigns.
 

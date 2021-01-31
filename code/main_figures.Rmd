@@ -11,9 +11,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Load data and functions
 
 ```{r}
-source("utils.R")
+source("code/utils.R")
 
-analysis <- importTidy()
+analysis <- read_rds("data/tidy_data/analysisList.rds")
 
 analysis.DTP<- analysis[[1]]
 analysis.PCV10<- analysis[[2]]
@@ -46,7 +46,7 @@ y = c(rep(-10,4),-10)
 library(RColorBrewer)
 
 f1b <- analysis.DTP %>% mutate(
-                month = floor_date(DDN , "month")
+                month = floor_date(DDN , "month")+15
         ) %>% group_by(month, District) %>%
         summarize(count=n()) %>% 
         ggplot(aes(x=month,
@@ -540,14 +540,14 @@ ggsave("figures/main_figures/fig2.png",plot=f2,
 
 ```{r}
 
-pDTP <- makeRiverPlot(analysis[[1]],"DTP") +
+pDTP <- makeRiverPlot(analysis.DTP,"DTP") +
                   theme_cowplot()+
                   theme(legend.position = "none")
-pPCV <- makeRiverPlot(analysis[[2]],"PCV10")+
+pPCV <- makeRiverPlot(analysis.PCV10,"PCV10")+
                   theme_cowplot()+
                   theme(legend.position = "none")
 
-pRota <-makeRiverPlot(analysis[[3]],"Rota") +
+pRota <-makeRiverPlot(analysis.Rota,"Rota") +
                   theme_cowplot()+
                   ggtitle("Rotavirus")
 
@@ -904,7 +904,66 @@ ggsave("figures/main_figures/fig4.png",plot=f4,
 The y-axis represents the probability of DTP vaccination on a given week among individuals eligible for on-time or late vaccination in Tulear I. Area represents the 95% confidence intervals and the line in a Loess smooth function. Timing of VWs (black dashed) and the 2016 SIA (blue dotted) are indicated. (B) The simulated coverage of the third dose of DTP vaccine of children at 1-year of age is shown on the y-axis for different levels of catch-up on VWs.
 
 ```{r}
-source('weeklyseasonality2.R')
+
+Ontime1 <- filter(analysis.DTP,B1.SA.time>6) %>%
+        mutate(censor=ifelse(B1.SA.time>10,0,V1.SA.censor),
+               entry = DDN + 6*7,
+               exit = ifelse(B1.SA.time>10,
+                             DDN + (10*7),
+                             DDN + round(7*B1.SA.time))) %>%
+        select(ID,DDN,B1.SA.time,V1.SA.censor,entry,exit,censor,District)%>%
+        splitter() %>% mutate(Dose=1,timeliness="On Time")
+
+
+
+Ontime2 <- filter(analysis.DTP,B2.SA.time>4) %>%
+        mutate(censor=ifelse(B2.SA.time>8,0,V2.SA.censor),
+               entry = V1.date + 4*7,
+               exit = ifelse(B2.SA.time>8,
+                             V1.date + (8*7),
+                             V1.date + round(7*B2.SA.time))) %>%
+        select(ID,V1.date,B2.SA.time,V2.SA.censor,entry,exit,censor,District) %>%
+        splitter() %>% mutate(Dose=2,timeliness="On Time")
+
+Ontime3 <- filter(analysis.DTP,B3.SA.time>4) %>%
+        mutate(censor=ifelse(B3.SA.time>8,0,V3.SA.censor),
+               entry = V2.date + 4*7,
+               exit = ifelse(B3.SA.time>8,
+                             V2.date + (8*7),
+                             V2.date + round(7*B3.SA.time))) %>%
+        select(ID,V2.date,B3.SA.time,V3.SA.censor,entry,exit,censor,District) %>%
+        splitter() %>% mutate(Dose=3,timeliness="On Time")
+
+
+Late1 <- filter(analysis.DTP,B1.SA.time>10) %>%
+        mutate(censor=V1.SA.censor,
+               entry = DDN + 10*7,
+               exit = DDN + round(7*B1.SA.time)) %>%
+        select(ID,DDN,B1.SA.time,V1.SA.censor,entry,exit,censor,District) %>%
+        splitter() %>% mutate(Dose=1,timeliness="Late")
+
+Late2 <- filter(analysis.DTP,B2.SA.time>8) %>%
+        mutate(censor=V2.SA.censor,
+               entry = V1.date + 8*7,
+               exit = V1.date + round(7*B2.SA.time)) %>%
+        select(ID,V1.date,B2.SA.time,V2.SA.censor,entry,exit,censor,District)%>%
+        splitter() %>% mutate(Dose=2,timeliness="Late")
+
+Late3 <- filter(analysis.DTP,B3.SA.time>8) %>%
+        mutate(censor=V3.SA.censor,
+               entry = V2.date + 8*7,
+               exit = V2.date + round(7*B3.SA.time)) %>%
+        select(ID,V2.date,B3.SA.time,V3.SA.censor,entry,exit,censor,District)%>%
+        splitter() %>% mutate(Dose=3,timeliness="Late")
+
+fits<-bind_rows(
+        fitter(Ontime1),
+        fitter(Ontime2),
+        fitter(Ontime3),
+        fitter(Late1),
+        fitter(Late2),
+        fitter(Late3)
+)
 
 #visualize
 VW <- as.Date(c("2015-05-11","2015-10-28","2016-05-09","2016-10-26"))+3
@@ -1053,58 +1112,4 @@ ggsave("figures/main_figures/fig5.png", plot=f5, height = 6, width = 8)
 
 
 ```
-
-### Get coverage and lateness estimates for the text???
-
-```{r}
-# 
-# KM.DTP<- KMestim(analysis.DTP) %>% mutate(antigen = "DTP")
-# KM.PCV10<- KMestim(analysis.PCV10) %>% mutate(antigen = "PCV10")
-# KM.Rota<- KMestim(analysis.Rota) %>% mutate(antigen = "Rota")
-# 
-# KM.total <- bind_rows(KM.DTP,KM.PCV10,KM.Rota) %>%
-#         filter(!(dose == "Third" & antigen == "Rota"))
-# 
-# # Coverage
-# dfCov1 <- KM.total%>% filter(type=="coverage"& dose == "First")
-# dfCov2 <- KM.total%>% filter(type=="coverage"& dose == "Second")
-# dfCov3 <- KM.total%>% filter(type=="coverage"& dose == "Third")
-# 
-# # Timeliness
-# dfLat1 <- KM.total %>% filter(type =="notLate" & dose == "First") #%>%
-#         #left_join(dfCov1, by =c("strata","antigen")) %>%
-#         #mutate(pLate=round(1-cov.x/cov.y,2)) %>%
-#         #select(dose.x,strata,antigen,pLate)
-#         
-#         
-# dfLat2 <- KM.total %>% filter(type =="notLate" & dose == "Second") #%>%
-#         # left_join(dfCov1, by =c("strata","antigen")) %>%
-#         # left_join(dfCov2, by =c("strata","antigen")) %>%
-#         # mutate(pLate=round(1-cov.x*cov.y/cov,2))%>%
-#         # select(dose.x,strata,antigen,pLate)
-# 
-# dfLat3 <- KM.total %>% filter(type =="notLate" & dose == "Third")  #%>%
-#         # left_join(dfCov2, by =c("strata","antigen")) %>%
-#         # left_join(dfCov3, by =c("strata","antigen")) %>%
-#         # mutate(pLate=round(1-cov.x*cov.y/cov,2))%>%
-#         # select(dose.x,strata,antigen,pLate)
-# 
-# 
-# 
-# 
-# hey <- left_join(dfLat1,dfLat2, by=c("strata","antigen")) %>%
-#         left_join(dfLat3, by=c("strata","antigen")) %>%
-#         filter(str_sub(strata,1,8)=="District")
-# 
-# left_join(dfLat1,dfLat2, by=c("strata","antigen")) %>%
-#         left_join(dfLat3, by=c("strata","antigen")) %>%
-#         filter(str_sub(strata,1,8)!="District" &
-#                        strata!="Overall") %>%
-#         ggplot() + geom_line(aes(x=strata,y=cov,group=antigen,col=antigen))
-# 
-
-
-```
-
-
 
