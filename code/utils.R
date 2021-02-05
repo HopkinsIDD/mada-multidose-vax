@@ -29,6 +29,124 @@ library(lattice)
 # 2.  Load functions
 ####################
 
+tidyVariables<-function(data, antigen){
+        #select the antigen we are looking at
+        if (antigen == "DTP"){
+                subdata <- data %>% 
+                        select(ID,Region,District,HCC,DDN,
+                               #DTP Vaccine
+                               DTP1,DTP2,DTP3,DTPHBHiB1_date,DTPHBHiB2_date,DTPHBHiB3_date)
+        }
+        
+        if (antigen == "PCV10"){
+                subdata <- data %>% 
+                        select(ID,Region,District,HCC,DDN,
+                               #PCV Vaccine
+                               PCV10_1,PCV10_2,PCV10_3, PCV10_1_date, PCV10_2_date, PCV10_3_date)
+        }
+        
+        if (antigen == "Rota"){
+                subdata <- data %>% 
+                        select(ID,Region,District,HCC, DDN,
+                               #Rota Vaccine
+                               rota1,rota2, rota3, rota_1_date, rota_2_date,rota_3_date)
+        }
+        
+        #change the variable names
+        colnames(subdata)[6:11] <- c("V1","V2","V3","V1.date","V2.date","V3.date")
+        
+        
+        #Fix geographic variables and birth
+        subdata <- subdata %>% mutate(District=factor(District,
+                                                      levels = c("MAHAJANGA I",
+                                                                 "MAROVOAY" ,
+                                                                 "TULEAR I" ,
+                                                                 "TULEAR II",
+                                                                 "MANAKARA",
+                                                                 "VOHIPENO")),
+                                      urban = ifelse(District %in% 
+                                                             c("MAHAJANGA I",
+                                                               "MANAKARA",
+                                                               "TULEAR I"),
+                                                     1,0)) %>%
+                mutate(
+                        birth.yearmonth=format(DDN, '%Y-%m'),
+                        birth.year= year(DDN),
+                        birth.month= month(DDN))
+        
+        # administratively censoring at data collection
+        last.obs <- as.Date("2017-02-01")
+        subdata <- subdata %>%
+                mutate(
+                        #ensure that all observations are before the administrative censoring date
+                        V1 =ifelse(V1.date>last.obs,0,1),
+                        V2 =ifelse(V2.date>last.obs,0,1),
+                        V3 =ifelse(V3.date>last.obs,0,1),
+                        V1.date=as.Date(ifelse(V1.date>last.obs,NA,as.character(V1.date))),
+                        V2.date=as.Date(ifelse(V2.date>last.obs,NA,as.character(V2.date))),
+                        V3.date=as.Date(ifelse(V3.date>last.obs,NA,as.character(V3.date)))
+                )
+        
+        
+        # #create survival analysis variables
+        SAdata <- subdata %>% mutate(
+                
+                # Calculate censor date to determine if observation was censored or not
+                full_observe = ifelse(DDN + 365 < last.obs,TRUE,FALSE),
+                censor_date = as.Date(ifelse(full_observe,
+                                             as.character(DDN + 365),
+                                             as.character(last.obs))),
+                
+                # Determine if observation was censored
+                V1.SA.censor = ifelse(censor_date < V1.date | is.na(V1.date) ,0, V1),
+                V2.SA.censor = ifelse(censor_date < V2.date| is.na(V2.date), 0, V2),
+                V3.SA.censor = ifelse(censor_date < V3.date| is.na(V3.date), 0, V3),
+                
+                #Define T1, T2 and T3
+                T1.SA.time =  ifelse(V1.SA.censor==1,V1.date - DDN, censor_date - DDN),
+                T2.SA.time =  ifelse(V2.SA.censor==1,V2.date - DDN, censor_date - DDN),
+                T3.SA.time =  ifelse(V3.SA.censor==1,V3.date - DDN, censor_date - DDN),
+                T1.SA.time =  T1.SA.time/7, #weeks
+                T2.SA.time =  T2.SA.time/7, #weeks
+                T3.SA.time =  T3.SA.time/7, #weeks
+                
+                #Define B1, B2 and B3
+                B1.SA.time =  T1.SA.time,
+                B2.SA.time =  T2.SA.time- T1.SA.time,
+                B3.SA.time =  T3.SA.time- T2.SA.time
+                
+                
+        )
+        
+        
+        
+        # Define timeliness
+        final <- SAdata %>%
+                mutate(
+                        V1.timeliness = ifelse(V1.SA.censor==0,
+                                               ifelse(full_observe==TRUE,"Never","Censored"),
+                                               as.character(cut(B1.SA.time,c(0,6,10,Inf),
+                                                                right = FALSE,
+                                                                labels=c("Early","OnTime","Late")))
+                        ),
+                        V2.timeliness = ifelse(V2.SA.censor==0,
+                                               ifelse(full_observe==TRUE,"Never","Censored"),
+                                               as.character(cut(B2.SA.time,c(0,4,8,Inf),
+                                                                right = FALSE,
+                                                                labels=c("Early","OnTime","Late")))
+                        ),
+                        V3.timeliness = ifelse(V3.SA.censor==0,
+                                               ifelse(full_observe==TRUE,"Never","Censored"),
+                                               as.character(cut(B3.SA.time,c(0,4,8,Inf),
+                                                                right = FALSE,
+                                                                labels=c("Early","OnTime","Late")))
+                        )
+                )
+        
+        return(final)
+        
+} 
+
 
 # function takes kaplan-meier fit objects (output from survfit) and
 # gives coverage for given time
@@ -763,19 +881,174 @@ makeRiverPlot <- function(data , antigen) {
 # Overall Goal
 ### Break dataset up by calendar week and timeliness
 ### Calculate the hazard at the weekly level
-
-splitter <- function(dat) {
+splitFit_ontime <- function(dat, dose) {
         
-        cutPoints <- floor_date(seq.Date(as.Date("2015-01-01"),as.Date("2017-02-10"),by=7),"weeks")+1
+        # find the bounds for each dose
+        if (dose==1) {
+                bounds <- c(6,10)
+                dat <- dat %>%
+                        mutate(t_var = B1.SA.time,
+                               c_var = V1.SA.censor,
+                               start_var=DDN
+                               )
+        }
+        if (dose==2) {
+                bounds <- c(4,8)
+                dat <- dat %>%
+                        mutate(t_var = B2.SA.time,
+                               c_var = V2.SA.censor,
+                               start_var=V1.date
+                        )
+                
+        }
+        if (dose==3) {
+                bounds <- c(4,8)
+                dat <- dat %>%
+                        mutate(t_var = B3.SA.time,
+                               c_var = V3.SA.censor,
+                               start_var=V2.date
+                        )
+        }
         
-        dat %>% survSplit(data=.,Surv(as.numeric(entry), as.numeric(exit), censor)~.,
+        # indicate the dates of entry and exit for bounds
+        entryExit<- filter(dat,t_var>=bounds[1]) %>%
+                mutate(
+                        censor=ifelse(t_var>bounds[2],0,c_var),
+                        entry = start_var + bounds[1]*7,
+                        exit  = ifelse(t_var>bounds[2],
+                                       as.character(start_var + (bounds[2]*7)),
+                                       as.character(start_var + round(7*t_var))),
+                        exit = as.Date(exit)
+                ) %>%
+                filter(entry!=exit) %>% #remove those with equivalent entry and exit dates
+                select(ID,start_var,t_var,c_var,entry,exit,censor,District)
+        
+        # cut up individuals times based on calendar week
+        cutPoints <- floor_date(seq.Date(as.Date("2015-01-01"),as.Date("2017-02-01"),by=7),"weeks")+1
+        splitData <- entryExit %>% survSplit(data=.,Surv(as.numeric(entry), as.numeric(exit), censor)~.,
                           cut = as.numeric(cutPoints),
                           end = "exit") %>%
                 mutate(PT=exit-tstart,
-                       tstart=as.Date(tstart, origin="1970-01-01"))%>%
+                       tstart=as.Date(tstart, origin="1970-01-01"),
+                       exit=as.Date(exit, origin="1970-01-01"))%>%
                 mutate(week=cut(tstart,cutPoints))
         
+        #combine PT across individuals and change to weeks 
+        splitData <- splitData %>% group_by(week,District) %>%
+                summarize(PT=sum(PT)/7, 
+                          vax=sum(censor)
+                )
+        
+        #fit model and predict values for Tulear I
+        model <- glm(data=splitData, vax ~ -1 + factor(week)+District,
+                     offset=log(PT),
+                     family=poisson(link="log")
+        ) %>% predict.glm(data.frame(week=sort(unique(splitData$week)),
+                                     District="TULEAR I",PT=1),
+                          se.fit=TRUE)
+        
+        # #calculate confidence intervals
+        conFint <- data.frame(week=sort(unique(splitData$week)),
+                              fit=exp(model$fit)*100,
+                              lwr=exp(model$fit-1.96*model$se.fit)*100,
+                              upr=exp(model$fit+1.96*model$se.fit)*100
+        ) %>%         mutate(Dose=dose,
+                       timeliness="On Time",
+                       District="TULEAR I")
+
+        return(conFint)
+
 }
+
+splitFit_late <- function(dat, dose) {
+        
+        # find the bounds for each dose
+        if (dose==1) {
+                bounds <- 10
+                dat <- dat %>%
+                        mutate(t_var = B1.SA.time,
+                               c_var = V1.SA.censor,
+                               start_var=DDN
+                        )
+        }
+        if (dose==2) {
+                bounds <- 8
+                dat <- dat %>%
+                        mutate(t_var = B2.SA.time,
+                               c_var = V2.SA.censor,
+                               start_var=V1.date
+                        )
+                
+        }
+        if (dose==3) {
+                bounds <- 8
+                dat <- dat %>%
+                        mutate(t_var = B3.SA.time,
+                               c_var = V3.SA.censor,
+                               start_var=V2.date
+                        )
+        }
+        
+        entryExit<- filter(dat,t_var>=bounds[1]) %>%
+                mutate(
+                        censor=c_var,
+                        entry = start_var + bounds[1]*7,
+                        exit  = start_var + round(7*t_var)
+                ) %>%
+                filter(entry!=exit) %>% #remove those with equivalent entry and exit dates
+                select(ID,start_var,t_var,c_var,entry,exit,censor,District)
+        
+        # cut up individuals times based on calendar week
+        cutPoints <- floor_date(seq.Date(as.Date("2015-01-01"),as.Date("2017-02-01"),by=7),"weeks")+1
+        splitData <- entryExit %>% survSplit(data=.,Surv(as.numeric(entry), as.numeric(exit), censor)~.,
+                                             cut = as.numeric(cutPoints),
+                                             end = "exit") %>%
+                mutate(PT=exit-tstart,
+                       tstart=as.Date(tstart, origin="1970-01-01"),
+                       exit=as.Date(exit, origin="1970-01-01"))%>%
+                mutate(week=cut(tstart,cutPoints))
+        
+        #combine PT across individuals and change to weeks 
+        splitData <- splitData %>% group_by(week,District) %>%
+                summarize(PT=sum(PT)/7, 
+                          vax=sum(censor)
+                )
+        
+        #fit model and predict values for Tulear I
+        model <- glm(data=splitData, vax ~ -1 + factor(week)+District,
+                     offset=log(PT),
+                     family=poisson(link="log")
+        ) %>% predict.glm(data.frame(week=sort(unique(splitData$week)),
+                                     District="TULEAR I",PT=1),
+                          se.fit=TRUE)
+        
+        # #calculate confidence intervals and output dataframe
+        conFint <- data.frame(week=sort(unique(splitData$week)),
+                              fit=exp(model$fit)*100,
+                              lwr=exp(model$fit-1.96*model$se.fit)*100,
+                              upr=exp(model$fit+1.96*model$se.fit)*100
+        ) %>%         mutate(Dose=dose,
+                             timeliness="Late",
+                             District="TULEAR I")
+        
+        return(conFint)
+        
+}
+
+
+# splitter <- function(dat) {
+#         
+#         cutPoints <- floor_date(seq.Date(as.Date("2015-01-01"),as.Date("2017-02-10"),by=7),"weeks")+1
+#         
+#         dat %>% survSplit(data=.,Surv(as.numeric(entry), as.numeric(exit), censor)~.,
+#                           cut = as.numeric(cutPoints),
+#                           end = "exit") %>%
+#                 mutate(PT=exit-tstart,
+#                        tstart=as.Date(tstart, origin="1970-01-01"))%>%
+#                 mutate(week=cut(tstart,cutPoints))
+#         
+# }
+
 
 
 
