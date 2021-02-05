@@ -991,7 +991,7 @@ splitFit_late <- function(dat, dose) {
         
         entryExit<- filter(dat,t_var>=bounds[1]) %>%
                 mutate(
-                        censor=c_var,
+                        censor= c_var,
                         entry = start_var + bounds[1]*7,
                         exit  = start_var + round(7*t_var)
                 ) %>%
@@ -1053,37 +1053,78 @@ splitFit_late <- function(dat, dose) {
 
 
 
-fitter <-function(data){
+# fitter <-function(data){
+#         
+#         #fit poisson model and predict values
+#         model <- data %>% glm(data=., censor~ -1 + factor(week)+District,
+#                               offset=log(PT),
+#                               family=poisson(link="log")
+#         ) %>% predict.glm(data.frame(week=sort(unique(data$week)),
+#                                      District="TULEAR I",PT=7),
+#                           se.fit=TRUE)
+#         
+#         conFint <- data.frame(fit=model$fit,
+#                               lwr=model$fit-1.96*model$se.fit,
+#                               upr=model$fit+1.96*model$se.fit
+#         )
+#         
+#         # interval='confidence', level=0.95) 
+#         # output predictions
+#         data.frame(week=sort(unique(data$week)),
+#                    Dose=unique(data$Dose),
+#                    timeliness=unique(data$timeliness),
+#                    exp(conFint)*100)
+#         
+#         
+# }
+
+
+getRates <- function(dat,dose){
         
-        #fit poisson model and predict values
-        model <- data %>% glm(data=., censor~ -1 + factor(week)+District,
-                              offset=log(PT),
-                              family=poisson(link="log")
-        ) %>% predict.glm(data.frame(week=sort(unique(data$week)),
-                                     District="TULEAR I",PT=7),
-                          se.fit=TRUE)
+        # find the variables for each dose
+        if (dose==1) {
+                dat <- dat %>%
+                        mutate(t_var = B1.SA.time,
+                               c_var = V1.SA.censor,
+                        )
+        }
+        if (dose==2) {
+                dat <- dat %>%
+                        mutate(t_var = B2.SA.time,
+                               c_var = V2.SA.censor,
+                        )
+                
+        }
+        if (dose==3) {
+                dat <- dat %>%
+                        mutate(t_var = B3.SA.time,
+                               c_var = V3.SA.censor,
+                        )
+        }
         
-        conFint <- data.frame(fit=model$fit,
-                              lwr=model$fit-1.96*model$se.fit,
-                              upr=model$fit+1.96*model$se.fit
-        )
-        
-        # interval='confidence', level=0.95) 
-        # output predictions
-        data.frame(week=sort(unique(data$week)),
-                   Dose=unique(data$Dose),
-                   timeliness=unique(data$timeliness),
-                   exp(conFint)*100)
-        
+        #calculate the weekly probability
+        dat %>% filter(t_var>0)%>%
+                survSplit(data=.,Surv( t_var, c_var)~.,
+                          cut = 0:52,
+                          end = "exit")%>%
+                mutate(PT=exit-tstart) %>%
+                filter(tstart<52) %>%
+                group_by(tstart)%>%
+                summarize(vax=sum(c_var),
+                          PT=sum(PT),
+                          prob=vax/PT
+                ) %>%
+                select(tstart,prob)
         
 }
 
 
+
 #runs simulations and tracks doses/coverage
-VWsimulation <- function(catchup=1){
+VWsimulation <- function(catchup=1, rates){
         
         #load rates of vaccination
-        rates <- read_csv("vaccRateMatrix.csv") %>% select(-X1)
+        # rates <- read_csv("vaccRateMatrix.csv") %>% select(-X1)
         RegRates <- as.matrix(rates)[,2:4]
         
         #define rates of those who are "caught up"
@@ -1245,6 +1286,10 @@ VWsimulation <- function(catchup=1){
         return(list(covTracker,doseTracker))
         
 }
+
+
+
+
 
 
 

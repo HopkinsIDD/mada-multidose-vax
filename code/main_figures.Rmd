@@ -477,16 +477,20 @@ Late2 <- splitFit_late(analysis.DTP,dose = 2)
 Late3 <- splitFit_late(analysis.DTP,dose = 3)
         
 fits <- bind_rows(Ontime1,Ontime2,Ontime3,
-                  Late1,Late2,Late3)        
-#visualize all the  doses
+                  Late1,Late2,Late3)
+
+#vaccination week and SIA dates
+VW <- as.Date(c("2015-05-11","2015-10-28","2016-05-09","2016-10-26"))+3
+
+
 # fits %>% #filter(upr<100)%>%
 #         ggplot(aes(x = as.Date(week), y = fit,
 #                    ymin = lwr, ymax = upr,
 #                     col=factor(timeliness),fill=factor(timeliness)
-#                    
+# 
 #                     )) +
 #         facet_wrap(Dose~.,ncol=1)+
-#         geom_point() + 
+#         geom_point() +
 #         geom_ribbon(alpha=0.1, col=NA) +
 #         geom_smooth( se = FALSE, method = "loess") +
 #         geom_vline(xintercept=VW[1:3],lty=2,size=1) +
@@ -496,8 +500,6 @@ fits <- bind_rows(Ontime1,Ontime2,Ontime3,
 #         xlim(as.Date(c("2015-01-01","2017-03-01")))+
 #         theme_cowplot()+
 #         scale_y_continuous(limits=c(0,100))
-#visualize
-VW <- as.Date(c("2015-05-11","2015-10-28","2016-05-09","2016-10-26"))+3
 
 f5a  <- fits %>% filter(Dose ==1) %>%
         ggplot(aes(x = as.Date(week), y = fit,
@@ -507,7 +509,7 @@ f5a  <- fits %>% filter(Dose ==1) %>%
                     )) +
         geom_point() + 
         geom_ribbon(alpha=0.1, col=NA) +
-        geom_smooth( se = FALSE) +
+        geom_smooth(method = "loess", se = FALSE) +
         geom_vline(xintercept=VW,
                    col=c("black","black","black","blue"),
                    lty=c(2,2,2,3),
@@ -675,6 +677,42 @@ f5a  <- fits %>% filter(Dose ==1) %>%
 #         #+
 #         #scale_y_continuous(trans="log10")
         
+```
+
+
+```{r}
+
+
+vaccMatrix <- read_csv("data/generated_data/simulation_files/vaccRateMatrix.csv")  %>% select(-X1)
+
+hazard <- getRates(analysis.DTP,1) %>% rename(rate1=prob) %>%
+        left_join(getRates(analysis.DTP,2) %>% rename(rate2=prob)) %>%
+        left_join(getRates(analysis.DTP,3) %>% rename(rate3=prob)) %>%
+         mutate(rate2=ifelse(is.na(rate2),0,rate2),
+                rate3=ifelse(is.na(rate3),0,rate3)
+                ) 
+
+# bind_rows(vaccMatrix,hi) %>%
+#         gather(dose,prob,-c(tstart,status)) %>%
+#         ggplot(aes(x=tstart,y=prob,col=status))+
+#         geom_point()+
+#         geom_line()+
+#         facet_wrap(dose~.)
+
+catchupFull <- VWsimulation(catchup = 1,   rates=hazard)
+catchupHalf <- VWsimulation(catchup = 0.5, rates=hazard)
+catchupTenth <- VWsimulation(catchup = 0.1,rates=hazard)
+catchupNone <- VWsimulation(catchup = 0,   rates=hazard)
+ 
+#         
+#         dat %>% survSplit(data=.,Surv(as.numeric(entry), as.numeric(exit), censor)~.,
+#                           cut = as.numeric(cutPoints),
+#                           end = "exit") %>%
+#                 mutate(PT=exit-tstart,
+#                        tstart=as.Date(tstart, origin="1970-01-01"))%>%
+#                 mutate(week=cut(tstart,cutPoints))
+#         
+
 
 
 
