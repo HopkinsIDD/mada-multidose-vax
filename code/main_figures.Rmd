@@ -29,14 +29,15 @@ A) Circle area corresponds to the number of vaccination cards analyzed for urban
 Take figure 1b into powerpoint.
 ```{r}
 
-# 
-# 
-# #Figure 1a
-# p1a <- rasterGrob(readPNG("Custom Figures/map_fig.png"),interpolate=TRUE)
-# 
-# 
-# f1a <- qplot(1:10, 1:10, geom="blank") +
-#   annotation_custom(p1a, xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf) + theme_void()
+
+
+# (0.85/2)^2 #4000
+# (0.6/2)^2  #2000
+# (0.43/2)^2 #1000
+
+# table(analysis.DTP$District)
+# sqrt(table(analysis.DTP$District)/4000*(0.85/2)^2)*2
+
 
 
 #Figure 1b
@@ -49,32 +50,36 @@ y = c(rep(-10,4),-10)
 library(RColorBrewer)
 
 f1b <- analysis.DTP %>% mutate(
-                month = floor_date(DDN , "month")+15
+                month = floor_date(DDN , "month")
         ) %>% group_by(month, District) %>%
         summarize(count=n()) %>% 
+        mutate(District=factor(District,
+               levels=c("MAHAJANGA I","TULEAR I","MANAKARA","MAROVOAY","TULEAR II","VOHIPENO"),
+               labels=c("Mahajanga I","Tulear I","Manakara","Marovoay","Tulear II","Vohipeno")
+               )) %>%
         ggplot(aes(x=month,
                    y= count,
                    col=District)) +
-                geom_point(size=2,alpha=0.7) +
-                geom_line(lwd=1,alpha=0.7)+
-                ylab("Vaccination Cards") +
-                xlab("Birth Month") +
-        #facet_wrap(.~District, nrow=3) +
-        #theme(legend.position = "none") +
+                geom_point(alpha=0.7,shape=16) +
+                geom_line(alpha=0.7)+
                 geom_text(inherit.aes=FALSE,data=VWlabels,
                           aes(x=x,y=y,label=labels),
-                          angle=0, #hjust="left",
-                          fontface="bold") +
-        scale_color_brewer(palette = "Set1" )+
-         xlim(as.Date("2014-12-01"),
-             as.Date("2017-07-01")) +
-        theme_cowplot()+
-        theme(legend.position = c(0.7,0.7))+
-        geom_hline(yintercept=0)
+                          angle=0) +
+                scale_color_brewer(palette = "Set1" )+
+                scale_y_continuous("No. of Vaccination Cards",breaks=c(0,100,200,300),limits=c(-10,300))+
+                scale_x_date("Birth Month",limits = as.Date(c("2014-12-01","2017-07-01")),
+                             breaks = as.Date(c("2015-01-01","2016-01-01","2017-01-01")),
+                             labels = format(as.Date(c("2015-01-01","2016-01-01","2017-01-01")),'%b %Y')) +
+                theme_cowplot()+
+                theme( legend.position = "none"
+                      # legend.position = c(0.7,0.7),
+                      # legend.background = element_rect(fill=NA,colour="black") 
+                )+
+                geom_hline(yintercept=0)
 
 f1b
-ggsave("figures/main_figures/f1b.png",plot=f1b,
-       height = 3.3, width = 6.2)
+# ggsave("figures/main_figures/fig1b.pdf",plot=f1b,
+#        height = 4, width = 6.2)
                        
 
 ```
@@ -261,12 +266,15 @@ f2 <- plot_grid(ggplot+theme_void(),f2a,f2b,f2c,
                 ggplot+theme_void(),f2d,f2e,f2f,nrow=2,
                 labels = c("A","","B","C","D","","E","F"),
                 align = "hv",axis="lb",rel_widths = c(0.1,1.3, 1,1.3))
-ggsave("figures/main_figures/fig2.pdf",plot=f2,
-       height = 6.3, width = 11.4)
-ggsave("figures/main_figures/fig2.tiff",plot=f2,
-       height = 6.3, width = 11.4)
-ggsave("figures/main_figures/fig2.png",plot=f2,
-       height = 6.3, width = 11.4)
+
+f2
+
+# ggsave("figures/main_figures/fig2.pdf",plot=f2,
+#        height = 6.3, width = 11.4)
+# ggsave("figures/main_figures/fig2.tiff",plot=f2,
+#        height = 6.3, width = 11.4)
+# ggsave("figures/main_figures/fig2.png",plot=f2,
+#        height = 6.3, width = 11.4)
 
 ```
 
@@ -275,6 +283,9 @@ ggsave("figures/main_figures/fig2.png",plot=f2,
 ### Figure 3: RiverPlot for cohort
 
 ```{r}
+
+
+analysis.DTP %>% filter(full_observe) %>% nrow()
 
 pDTP <- makeRiverPlot(analysis.DTP,"DTP") +
                   theme_cowplot()+
@@ -295,12 +306,14 @@ pRP <- plot_grid(pDTP,
           labels = c("A","B","C"),
           ncol=1)
 
-ggsave("figures/main_figures/fig3.tiff",plot=pRP,
-       height = 9, width = 7.5)
-ggsave("figures/main_figures/fig3.pdf",plot=pRP,
-       height = 9, width = 7.5)
-ggsave("figures/main_figures/fig3.png",plot=pRP,
-       height = 9, width = 7.5)
+pRP
+
+# ggsave("figures/main_figures/fig3.tiff",plot=pRP,
+#        height = 9, width = 7.5)
+# ggsave("figures/main_figures/fig3.pdf",plot=pRP,
+#        height = 9, width = 7.5)
+# ggsave("figures/main_figures/fig3.png",plot=pRP,
+#        height = 9, width = 7.5)
 
 
 
@@ -452,12 +465,14 @@ f4 <- plot_grid(  f4_a+theme(legend.position = c(0.75,0.25)),
                   labels = c("A","","B"),
           nrow=1)
 
-ggsave("figures/main_figures/fig4.pdf",plot=f4,
-       height = 4.5, width = 10.5)
-ggsave("figures/main_figures/fig4.tiff",plot=f4,
-       height = 4.5, width = 10.5)
-ggsave("figures/main_figures/fig4.png",plot=f4,
-       height = 4.5, width = 10.5)
+f4
+
+# ggsave("figures/main_figures/fig4.pdf",plot=f4,
+#        height = 4.5, width = 10.5)
+# ggsave("figures/main_figures/fig4.tiff",plot=f4,
+#        height = 4.5, width = 10.5)
+# ggsave("figures/main_figures/fig4.png",plot=f4,
+#        height = 4.5, width = 10.5)
 
 
 
@@ -526,164 +541,10 @@ f5a  <- fits %>% filter(Dose ==1) %>%
         theme_cowplot()
      
         
-
-
-        
-#         filter(analysis.DTP,B1.SA.time>=6) %>%
-#         mutate(
-#                censor=ifelse(B1.SA.time>10,0,V1.SA.censor),
-#                entry = DDN + 6*7,
-#                exit  = ifelse(B1.SA.time>10,
-#                              as.character(DDN + (10*7)),
-#                              as.character(DDN + round(7*B1.SA.time))),
-#                exit = as.Date(exit)
-#                        ) %>%
-#         filter(entry!=exit) %>%
-#         select(ID,DDN,B1.SA.time,V1.SA.censor,entry,exit,censor,District)%>%
-#         splitter() %>% mutate(Dose=1,timeliness="On Time")
-# 
-# 
-# newOT <-Ontime1 %>% group_by(week,District) %>%
-#                         summarize(PT=sum(PT)/7, #combine PT and change to weeks
-#                                   vax=sum(censor)
-#                                   )
-# 
-# model <- glm(data=newOT, vax ~ -1 + factor(week)+District,
-#                               offset=log(PT),
-#                               family=poisson(link="log")
-#         ) %>% predict.glm(data.frame(week=sort(unique(newOT$week)),
-#                                      District="TULEAR I",PT=1),
-#                           se.fit=TRUE)
-# 
-# 
-#  conFint <- data.frame(fit=model$fit,
-#                               lwr=model$fit-1.96*model$se.fit,
-#                               upr=model$fit+1.96*model$se.fit
-#         )
-#         
-#         # interval='confidence', level=0.95) 
-#         # output predictions
-#        fit1 <- data.frame(week=sort(unique(newOT$week)),
-#                    Dose=1,
-#                    timeliness="On Time",
-#                    exp(conFint)*100)
-
-
-# Ontime1 <- filter(analysis.DTP,B1.SA.time>6) %>%
-#         mutate(censor=ifelse(B1.SA.time>10,0,V1.SA.censor),
-#                entry = DDN + 6*7,
-#                exit = ifelse(B1.SA.time>10,
-#                              DDN + (10*7),
-#                              DDN + round(7*B1.SA.time))) %>%
-#         select(ID,DDN,B1.SA.time,V1.SA.censor,entry,exit,censor,District)%>%
-#         splitter() %>% mutate(Dose=1,timeliness="On Time")
-
-
-
-# Ontime2 <- filter(analysis.DTP,B2.SA.time>4) %>%
-#         mutate(censor=ifelse(B2.SA.time>8,0,V2.SA.censor),
-#                entry = V1.date + 4*7,
-#                exit = ifelse(B2.SA.time>8,
-#                              V1.date + (8*7),
-#                              V1.date + round(7*B2.SA.time))) %>%
-#         select(ID,V1.date,B2.SA.time,V2.SA.censor,entry,exit,censor,District) %>%
-#         splitter() %>% mutate(Dose=2,timeliness="On Time")
-# 
-# Ontime3 <- filter(analysis.DTP,B3.SA.time>4) %>%
-#         mutate(censor=ifelse(B3.SA.time>8,0,V3.SA.censor),
-#                entry = V2.date + 4*7,
-#                exit = ifelse(B3.SA.time>8,
-#                              V2.date + (8*7),
-#                              V2.date + round(7*B3.SA.time))) %>%
-#         select(ID,V2.date,B3.SA.time,V3.SA.censor,entry,exit,censor,District) %>%
-#         splitter() %>% mutate(Dose=3,timeliness="On Time")
-# 
-# 
-# Late1 <- filter(analysis.DTP,B1.SA.time>10) %>%
-#         mutate(censor=V1.SA.censor,
-#                entry = DDN + 10*7,
-#                exit = DDN + round(7*B1.SA.time)) %>%
-#         select(ID,DDN,B1.SA.time,V1.SA.censor,entry,exit,censor,District) %>%
-#         splitter() %>% mutate(Dose=1,timeliness="Late")
-
-# Late2 <- filter(analysis.DTP,B2.SA.time>8) %>%
-#         mutate(censor=V2.SA.censor,
-#                entry = V1.date + 8*7,
-#                exit = V1.date + round(7*B2.SA.time)) %>%
-#         select(ID,V1.date,B2.SA.time,V2.SA.censor,entry,exit,censor,District)%>%
-#         splitter() %>% mutate(Dose=2,timeliness="Late")
-# 
-# Late3 <- filter(analysis.DTP,B3.SA.time>8) %>%
-#         mutate(censor=V3.SA.censor,
-#                entry = V2.date + 8*7,
-#                exit = V2.date + round(7*B3.SA.time)) %>%
-#         select(ID,V2.date,B3.SA.time,V3.SA.censor,entry,exit,censor,District)%>%
-#         splitter() %>% mutate(Dose=3,timeliness="Late")
-
-# fits<-bind_rows(
-#         fitter(Ontime1),
-#         # fitter(Ontime2),
-#         # fitter(Ontime3),
-#         fitter(Late1)#,
-#         # fitter(Late2),
-#         # fitter(Late3)
-# )
-
-
-
-#figure 5a
-# fits %>% 
-#         filter(upr<20 & timeliness =="On Time" | 
-#                         upr<3 & timeliness =="Late") %>%
-#         ggplot(aes(x = as.Date(week), y = fit,
-#                    ymin = lwr, ymax = upr,
-#                     col=factor(Dose),fill=factor(Dose)
-#                     )) + 
-#         geom_line() + 
-#         geom_ribbon(alpha=0.1, col=NA)+
-#         facet_wrap(.~timeliness,scale = "free_y",ncol=1)+
-#         geom_vline(xintercept=VW[1:3],lty=2,size=1) +
-#         geom_vline(xintercept=VW[4],col="blue",lty=3,size=1)+
-#         ylab("Predicted Weekly Hazard (%)") +
-#         xlab("Week of Vaccination")+
-#         scale_color_manual(values=f2cols)+
-#         scale_fill_manual(values=f2cols) +
-#         guides(fill=guide_legend(title="Dose"),
-#                col=guide_legend(title="Dose"))
-
-
-
-# f5a  <- fits %>% filter(upr<100 & Dose ==1) %>%
-#         ggplot(aes(x = as.Date(week), y = fit,
-#                    ymin = lwr, ymax = upr,
-#                     col=factor(timeliness),fill=factor(timeliness)
-#                    
-#                     )) +
-#         geom_point() + 
-#         geom_ribbon(alpha=0.1, col=NA) +
-#         geom_smooth( se = FALSE) +
-#         #facet_wrap(.~Dose,ncol=1)+
-#         geom_vline(xintercept=VW[1:3],lty=2,size=1) +
-#         geom_vline(xintercept=VW[4],col="blue",lty=3,size=1)+
-#         ylab("Weekly Probability \n of Vaccination (%)") +
-#         xlab("Week of Vaccination")+
-#         scale_color_manual(values=c("orange","darkgreen"),
-#                            name="Timeliness")+
-#         scale_fill_manual(values=c("orange","darkgreen"),
-#                           name="Timeliness")+
-#         xlim(as.Date(c("2015-01-01","2017-03-01")))+
-#         theme_cowplot()
-#         #theme(axis.title=element_text(size=10,face="bold"))
-#         #+
-#         #scale_y_continuous(trans="log10")
-        
 ```
 
 
 ```{r}
-
-
-vaccMatrix <- read_csv("data/generated_data/simulation_files/vaccRateMatrix.csv")  %>% select(-X1)
 
 hazard <- getRates(analysis.DTP,1) %>% rename(rate1=prob) %>%
         left_join(getRates(analysis.DTP,2) %>% rename(rate2=prob)) %>%
@@ -692,66 +553,16 @@ hazard <- getRates(analysis.DTP,1) %>% rename(rate1=prob) %>%
                 rate3=ifelse(is.na(rate3),0,rate3)
                 ) 
 
-# bind_rows(vaccMatrix,hi) %>%
-#         gather(dose,prob,-c(tstart,status)) %>%
-#         ggplot(aes(x=tstart,y=prob,col=status))+
-#         geom_point()+
-#         geom_line()+
-#         facet_wrap(dose~.)
+
 
 catchupFull <- VWsimulation(catchup = 1,   rates=hazard)
 catchupHalf <- VWsimulation(catchup = 0.5, rates=hazard)
 catchupTenth <- VWsimulation(catchup = 0.1,rates=hazard)
 catchupNone <- VWsimulation(catchup = 0,   rates=hazard)
  
-#         
-#         dat %>% survSplit(data=.,Surv(as.numeric(entry), as.numeric(exit), censor)~.,
-#                           cut = as.numeric(cutPoints),
-#                           end = "exit") %>%
-#                 mutate(PT=exit-tstart,
-#                        tstart=as.Date(tstart, origin="1970-01-01"))%>%
-#                 mutate(week=cut(tstart,cutPoints))
-#         
 
+VWs <- as.Date(c("2015-05-13","2015-10-21","2016-05-11","2016-10-19")) 
 
-
-
-#figure 5c and d
-
-# source('markov_dates_VW.R')
-
-# catchupFull <- VWsimulation(catchup = 1)
-# catchupHalf <- VWsimulation(catchup = 0.5)
-# catchupTenth <- VWsimulation(catchup = 0.1)
-# catchupNone <- VWsimulation(catchup = 0)
-# 
-# 
-# write_rds(catchupFull,"data/generated_data/simulationfiles/catchupFull.rds")
-# write_rds(catchupHalf,"data/generated_data/simulationfiles/catchupHalf.rds")
-# write_rds(catchupTenth,"data/generated_data/simulationfiles/catchupTenth.rds")
-# write_rds(catchupNone,"data/generated_data/simulationfiles/catchupNone.rds")
-
-
-catchupFull <-read_rds("data/generated_data/simulation_files/catchupFull.rds")
-catchupHalf <- read_rds("data/generated_data/simulation_files/catchupHalf.rds")
-catchupTenth <- read_rds("data/generated_data/simulation_files/catchupTenth.rds")
-catchupNone <- read_rds("data/generated_data/simulation_files/catchupNone.rds")
-
-
-
-# markov models
-
-#gray.colors(3, start = 0.2, end = 0.8)
-VWs <- as.Date(c("2015-05-13","2015-10-28",
-                 "2016-05-09","2016-10-26")) #check if these dates were used to simulate
-
-
-# VWlabels <- data.frame(
-# labels =c("VW", "VW", "VW", "VW"),
-# x =as.Date(c("2015-05-13","2015-10-21",
-#                  "2016-05-11","2016-10-19")) ,
-# y = c(rep(90,4))
-# )
 
 f5b <-bind_rows(catchupFull[[1]],
                 catchupHalf[[1]],
@@ -768,46 +579,21 @@ f5b <-bind_rows(catchupFull[[1]],
         xlim(as.Date(c("2015-01-01","2017-03-01")))+
         xlab("Week of First Birthday") +
         ylab("Third Dose Coverage \n at 1-year old (%)")+
-        # geom_text(inherit.aes=FALSE,data=VWlabels,
-        #                   aes(x=x,y=y,label=labels),
-        #                   angle=0, #hjust="left",
-        #                   fontface="bold")+
-       
         theme(axis.title=element_text(size=10,face="bold"))+
         scale_color_brewer(name="Catch-Up (%)",palette = "Set1")+
         theme_cowplot()+
         guides(colour = guide_legend(reverse=T))
 
 
-dt <- catchupFull[[2]] %>% group_by(date) %>%
-        summarize(First=sum(First),
-                  Second=sum(Second),
-                  Third=sum(Third)) %>%
-        gather(dose,count,-date)
-#dt %>% group_by(date) %>% summarize(count=sum(count)) %>% arrange(desc(count))
-
-f5c <- dt %>%  ggplot() + geom_bar(stat="identity",
-                                    aes(x=date,y=count/2559,fill=dose)) +
-        xlim(as.Date(c("2015-01-01","2017-03-01"))) +
-        scale_fill_grey(name="Dose",start=0.8, end=0.2)+
-        xlab("Week of Vaccination") +
-        ylab("Relative Number \n of Doses")+
-        geom_hline(yintercept=1)+
-        theme(axis.title=element_text(size=10,face="bold"))
-
-p <- plot_grid(f5b,
-          f5c+theme_cowplot(),
-          ncol=1,align="hv")#labels=c("A","B","C"))
-
 
 f5 <-plot_grid(f5a,f5b,ncol=1, align="v",
                labels=c("A","B"))
 
+f5
 
-
-ggsave("figures/main_figures/fig5.tiff", plot=f5, height = 6, width = 8)
-ggsave("figures/main_figures/fig5.pdf", plot=f5, height = 6, width = 8)
-ggsave("figures/main_figures/fig5.png", plot=f5, height = 6, width = 8)
+# ggsave("figures/main_figures/fig5.tiff", plot=f5, height = 6, width = 8)
+# ggsave("figures/main_figures/fig5.pdf", plot=f5, height = 6, width = 8)
+# ggsave("figures/main_figures/fig5.png", plot=f5, height = 6, width = 8)
 
 
 ```

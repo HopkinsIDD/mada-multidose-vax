@@ -36,9 +36,9 @@ analysis.Rota <- analysis[[3]]
 
 ```
 
-## Table S1: Supplemental vaccination activities in Madagascar from 2013 to 2016.
+## Web Table 1: Supplemental vaccination activities in Madagascar from 2013 to 2016.
 
-The date, type of activity (Supplemental Immunization Activity (SIA) or Vaccination Week (VW)), vaccine, and age target for non-routine activities is shown. *Childhood vaccines include those for measles,diphtheria, pertussis, tetanus, Hepatitis B infection, Haemophilius influenzae (Hib) infection, pneumococcal disease,  rotavirus infection, and poliovirus. 
+The date, type of activity (Supplemental Immunization Activity (SIA) or Vaccination Week, vaccine, and age target for non-routine activities is shown. Routine vaccines include those for measles,diphtheria, pertussis, tetanus, Hepatitis B infection, Haemophilius influenzae (Hib) infection, pneumococcal disease,  rotavirus infection, and poliovirus. 
 
 ```{r}
 
@@ -66,7 +66,7 @@ flextable(ts1) %>% width(width=1.5) %>% align_text_col(align="center")
 
 \pagebreak
 
-## Figure S1 Monthly number of doses given in six study districts according to the National Administrative database, 2013-2018
+## Web Figure 1: Monthly number of doses given in six study districts according to the National Administrative database, 2013-2018
 
 Dashed lines indicate months in which supplemental vaccination campaigns took place.
 
@@ -157,9 +157,9 @@ ggplot(nad_data1,aes(x=month,y=freq, col=dose)) +
 \pagebreak
 
 
-## Table S2: Comparison of vaccination coverage between national administrative and vaccine card databases
+## Web Table 2: Comparison of vaccination coverage calculations between national administrative data and vaccination card data
 
-Coverage estimates for vaccination card database were for children at 1-year of age.
+Coverage estimates for vaccination card data were for children at 1-year of age.
 
 
 ```{r}
@@ -536,78 +536,20 @@ finalCoverage[,c(3,1:2,4:10)] %>%
 
 \pagebreak
 
+## Web Figure 2: Process of curating the analysis data set for the vaccination card database
 
-## Figure S2: Kaplan-Meier curves for each vaccine and dose using the vaccination card database
+Steps to create a final analysis data set included 1) removing all cards for children that were not born in 2015 and 2016, 
+2) removing cards with evidence of later doses being given without evidence of prior doses, 3) removing all cards with vaccination dates that were out of order, and 4) removing all cards where there’s evidence of a vaccination occurring but no date is listed.
 
-Black dashed lines indicate the scheduled week of vaccination.
-
-```{r fig.height = 9.5, fig.width = 7}
-
-
-
-ncards <-nrow(analysis.DTP)
-
-fs2a <- weightedKMcurves(analysis.DTP) %>% ggplot(aes(x=time,y=vaccinated/ncards*100,col=dose,group=dose,
-                       fill=dose))+
-        geom_line()+geom_ribbon(aes(ymin=lower/ncards*100,ymax=upper/ncards*100),
-                                col=NA,
-                                alpha=0.4)+
-        scale_y_continuous("Percentage vaccinated (%)",limits = c(0,100))+
-        scale_x_continuous("Age in weeks",limits = c(0,52),breaks=c(0,6,10,14,26,52))+
-        ggtitle("DTP")+
-        geom_vline(xintercept=c(6,10,14),
-                                  lty=2)+
-        scale_colour_grey(name="Dose", start=0.8, end=0.2,labels = c('First','Second','Third'))+
-        scale_fill_grey(name="Dose", start=0.8, end=0.2,labels = c('First','Second','Third'))+
-        theme_cowplot()+
-        theme(legend.position = c(.75,.25))
-
-fs2b <- weightedKMcurves(analysis.PCV10) %>%
-        ggplot(aes(x=time,y=vaccinated/ncards*100,col=dose,group=dose,
-                       fill=dose))+
-        geom_line()+geom_ribbon(aes(ymin=lower/ncards*100,ymax=upper/ncards*100),
-                                col=NA,
-                                alpha=0.4)+
-        scale_y_continuous("Percentage vaccinated (%)",limits = c(0,100))+
-        scale_x_continuous("Age in weeks",limits = c(0,52),breaks=c(0,6,10,14,26,52))+
-        ggtitle("PCV10")+
-        geom_vline(xintercept=c(6,10,14),
-                                  lty=2)+
-        scale_colour_grey(start=0.8, end=0.2)+
-        scale_fill_grey(start=0.8, end=0.2)+
-        theme_cowplot()+
-        theme(legend.position = "none")
-
-fs2c <- weightedKMcurves(analysis.Rota) %>%
-        filter(dose!="Third") %>%
-        ggplot(aes(x=time,y=vaccinated/ncards*100,col=dose,group=dose,
-                       fill=dose))+
-        geom_line()+geom_ribbon(aes(ymin=lower/ncards*100,ymax=upper/ncards*100),
-                                col=NA,
-                                alpha=0.4)+
-        scale_y_continuous("Percentage vaccinated (%)",limits = c(0,100))+
-        scale_x_continuous("Age in weeks",limits = c(0,52),breaks=c(0,6,10,14,26,52))+
-        ggtitle("Rotavirus")+
-        geom_vline(xintercept=c(6,10,14),
-                                  lty=2)+
-        scale_colour_grey(start=0.8, end=0.5)+
-        scale_fill_grey(start=0.8, end=0.5)+
-        theme_cowplot()+
-        theme(legend.position = "none")
-
-
-plot_grid(fs2a,fs2b,fs2c,ncol =1,align="v", labels=c("A","B","C"))
-
-
-```
+![ ](../figures/supp_figures/figureS2_data_cleaning.png){width=500px}
   
 \pagebreak
 
-## Equation S1: Calculation of vaccination coverage and proportion late from vaccination card database
+## Web Appendix 1: Calculation of vaccination coverage and proportion late from vaccination card database
 
 ### Vaccination Coverage
   
-In our study, a date on a vaccination card indicates that a child has received a particular dose for a specific vaccine. Children born in 2015 and 2016 were included in our study. Time to vaccination of particular doses were right censored if vaccination was not observed by 52 weeks of age (administrative censoring) or February 1, 2017 (start of data collection).
+In our study, vaccination cards indicate whether a child has received a particular dose for a specific vaccine and the date of the date of vaccination. Children born in 2015 and 2016 were included in our study. Time to vaccination of particular doses were right censored if vaccination was not observed by 52 weeks of age (administrative censoring) or February 1, 2017 (start of data collection).
   
 We define vaccination coverage as the proportion of the children that received a particular dose of the vaccine before 52 weeks of age (i.e. before their first birthday). To estimate vaccination coverage associated with each of the three required doses, $\hat{V}_1$, $\hat{V}_2$,and $\hat{V}_3$, we used a survival function fitted via the non-parametric Kaplan-Meier method to account for censored observations [1]. Age (i.e. weeks since birth) is the time metric used in this analysis. The dataset contains $N$ individuals.
 
@@ -925,7 +867,7 @@ $$
 \pagebreak
 
 
-## Equation S2: Poisson regression model to investigate impact of additional vaccination activities
+## Web Appendix 2: Poisson regression model to investigate impact of additional vaccination activities
 
 Using Poisson regression, we calculated the probability of being vaccinated for each week of the study period, adjusting for district. 
 
@@ -977,7 +919,7 @@ $$
 \pagebreak
 
 
-## Equation S3: Deterministic markov model structure and equations
+## Web Appendix 3: Deterministic markov model structure and equations
 
 ### Routine Vaccination model
 
@@ -998,7 +940,8 @@ $$R_{3}(t\geq0,a=0)=0$$
 
 
 **Rate of routine vaccination**
-In our model, the weekly rate of vaccination only depends on which dose a child is yet to receive and how long it has been since their previous vaccination. Specifically, $\lambda^r_{j}(t)$ is the rate of vaccination for the $j$th dose for individuals in $R_{j-1}(t,a)$. This parameter was estimated from the vaccination card data for DTP vaccination (Figure S3A).
+
+In our model, the weekly rate of vaccination only depends on which dose a child is yet to receive and how long it has been since their previous vaccination. Specifically, $\lambda^r_{j}(t)$ is the rate of vaccination for the $j$th dose for individuals in $R_{j-1}(t,a)$. This parameter was estimated from the vaccination card data for DTP vaccination (Figure S6A).
 
 
 
@@ -1032,20 +975,273 @@ $$\lambda^{c}_{d}(t) = \lambda^{r}_{d}(t)+C(1-\lambda^{r}_{d}(t))$$
 
 where $C$ is a catch-up factor. Note that if $C=0$ that the rate of vaccination is the same as routine vaccination whereas if $C=1$ all late individuals will be vaccinated during the vaccination week.
 
-Lastly, we assumed children who were vaccinated through vaccination weeks (as opposed to routine vaccination), had a different rate of routine vaccination afterwards, $\lambda^{vw}_{d}(t)$ (Figure S3B). Specifically, the highest rates of on-time vaccination or the second and third doses were removed. This reflects our understanding that the effect of catch-up campaigns will mostly be to give an additional dose to many children without necessarily putting them back on track to complete their schedule. In a sensitivity analysis, Figure S4,we examined the impact of relaxing this assumption. 
+Lastly, we assumed children who were vaccinated through vaccination weeks (as opposed to routine vaccination), had a different rate of routine vaccination afterwards, $\lambda^{vw}_{d}(t)$ (Figure S6B). Specifically, the highest rates of on-time vaccination or the second and third doses were removed. This reflects our understanding that the effect of catch-up campaigns will mostly be to give an additional dose to many children without necessarily putting them back on track to complete their schedule. In a sensitivity analysis, Figure S7,we examined the impact of relaxing this assumption. 
 
 \pagebreak
 
-## Figure S3: Coverage and lateness for PCV10
+## Web Figure 3: Estimates of vaccination coverage at one-year of age and proportion of children receiving late doses for PCV10 by district and birth month
+
+Estimates of vaccination coverage at one-year of age and proportion of children receiving late doses for PCV10 are shown by both district and month of birth. Methods for calculating both are described in Equation S1. Districts are abbreviated with three characters (MAH=Mahajanga I; TU1=Tulear I; MAN=Manakara; MAR=Maravoay; TU2=Tulear II, VOH=Vohipeno).
+
+```{r fig.width=7.5, fig.height=7}
+#figure s3a table
+fs3a_tab <-   stratifyCovLat(analysis.PCV10,"District")[[1]] %>%
+                mutate(cov=round(cov,2)) %>%
+                mutate(District=factor(stratum, levels=levels(analysis.PCV10$District),
+                                              labels= c("MAH","MAR",
+                                                        "TU1","TU2",
+                                                        "MAN","VOH"))) %>%
+                mutate(urban = ifelse(stratum %in% c("MAHAJANGA I","MANAKARA","TULEAR I"),
+                                      "Urban","Rural"),
+                       urban=factor(urban,levels=c("Urban","Rural")))
+#figure s3a annotation
+fs3a_ann_text <- data.frame(cov = .05,
+                           pLate = .025,
+                       dose=factor(c(1,1),levels=as.character(1:3)),
+                       District = factor(c("TU1","TU2"),
+                                      levels = levels(fs3a_tab$District)),
+                       lab = c("Urban","Rural"),
+                       urban = factor(c("Urban","Rural"),
+                                      levels = c("Urban","Rural")))
+
+#figure s3a ggplot
+fs3a <- fs3a_tab %>% ggplot(aes(x=District,y=cov*100,
+                              col = dose, group=dose)) +
+                geom_point()+
+                geom_errorbar(aes(ymin=lb*100,ymax=ub*100,col = dose,group=dose),
+                      width =0.25) +
+        scale_colour_grey(start=0.8, end=0.2)+
+        ylab("Coverage at 1-year old (%)")+
+        ylim(c(0,100))+ 
+        geom_text(data = fs3a_ann_text,aes(label=lab),col="black")+ 
+
+        facet_grid(.~urban, 
+                   scales = "free")+
+        theme_cowplot()+theme(  legend.position="none",
+                                strip.background = element_blank(),
+                                strip.text.x = element_blank()
+                                )
+
+
+#figure s3b table
+fs3b_tab <-stratifyCovLat(analysis.PCV10,"birth.month")[[1]] %>%
+                mutate(cov=round(cov,2)) %>%
+                mutate(birth.month=factor(as.numeric(stratum),levels=1:12))
+
+#figure s3b ggplot
+fs3b <- fs3b_tab %>% ggplot(aes(x=birth.month,y=cov*100, 
+                              col = dose, group=dose)) +
+                geom_point()+#position=position_dodge(width = .5)) +
+                geom_line()+#position=position_dodge(width = .5)) +
+        geom_errorbar(aes(ymin=lb*100,ymax=ub*100,col = dose,group=dose),
+                      #position=position_dodge(width = .5),
+                      width =0.25) +
+                scale_colour_grey("Dose",start=0.8, end=0.2)+
+        ylab("Coverage at 1-year old (%)") +
+        xlab("Birth Month")+
+        ylim(c(0,100))+theme_cowplot()+
+        theme(axis.title.y = element_blank())
+
+#figure s3c table
+f2def_cols <- c("#fe9929", "#cc4c02", "#662506") #colors for lateness
+
+fs3c_tab <- stratifyCovLat(analysis.PCV10,"District")[[2]] %>%
+                mutate(pLate=round(lateness,2)) %>%
+                mutate(District=factor(stratum, levels=levels(analysis.PCV10$District),
+                                              labels= c("MAH","MAR",
+                                                        "TU1","TU2",
+                                                        "MAN","VOH"))) %>%
+                mutate(urban = ifelse(stratum %in% c("MAHAJANGA I","MANAKARA","TULEAR I"),
+                                      "Urban","Rural"),
+                       urban=factor(urban,levels=c("Urban","Rural")))
+# figure s3c ggplot
+fs3c <- fs3c_tab %>%
+        ggplot(aes(x=District,y=pLate*100,
+                              col = dose, group=dose)) +
+                geom_point()+
+         scale_color_manual(values=f2def_cols) +
+        ylim(c(0,50))+ 
+        geom_text(data = fs3a_ann_text,aes(label=lab),col="black")+
+
+        facet_grid(.~urban,
+                   scales = "free")+
+        theme_cowplot()+theme(  legend.position="none",
+                                strip.background = element_blank(),
+                                strip.text.x = element_blank()
+                                )+
+        ylab("Percentage receiving late doses (%)")
+
+# figure s3d table
+fs3d_tab <-stratifyCovLat(analysis.PCV10,"birth.month")[[2]] %>%
+                mutate(pLate=round(lateness,2)) %>%
+                mutate(birth.month=factor(as.numeric(stratum),levels=1:12))
+# figure s3d ggplot
+fs3d <- fs3d_tab %>%
+        ggplot(aes(x=birth.month,y=pLate*100, 
+                              col = dose, group=dose)) +
+                geom_point()+
+                geom_line()+
+         scale_color_manual("Dose",values=f2def_cols) +
+        xlab("Birth Month")+
+        ylim(c(0,50))+theme_cowplot()+
+        theme(axis.title.y = element_blank())
+
+
+
+#bring it all together
+# fs3<- plot_grid(ggplot+theme_void(),f2a,f2b,f2c,
+#                 ggplot+theme_void(),f2d,f2e,f2f,nrow=2,
+#                 labels = c("A","","B","C","D","","E","F"),
+#                 align = "hv",axis="lb",rel_widths = c(0.1,1.3, 1,1.3))
+
+
+plot_grid(ggplot+theme_void(), fs3a,ggplot+theme_void(), fs3b,
+          ggplot+theme_void(), fs3c,ggplot+theme_void(), fs3d,
+          nrow=2,labels=c("A","","B","","C","","D",""),
+          rel_widths = c(0.1,1, 0.1,1.3))
+
+
+```
 
 \pagebreak
 
-## Figure S4: Coverage and lateness for Rotavirus
+## Web Figure 4: Estimates of vaccination coverage at one-year of age and proportion of children receiving late doses for rotavirus vaccine by district and birth month
+
+Estimates of vaccination coverage at one-year of age and proportion of children receiving late doses for rotavirus vaccine are shown by both district and month of birth. Methods for calculating both are described in Equation S1. Districts are abbreviated with three characters (MAH=Mahajanga I; TU1=Tulear I; MAN=Manakara; MAR=Maravoay; TU2=Tulear II, VOH=Vohipeno).
+
+
+```{r fig.width=7.5, fig.height=7}
+#figure 2b table
+fs4a_tab <-   stratifyCovLat(analysis.Rota,"District")[[1]] %>%
+                mutate(cov=round(cov,2)) %>%
+                mutate(District=factor(stratum, levels=levels(analysis.Rota$District),
+                                              labels= c("MAH","MAR",
+                                                        "TU1","TU2",
+                                                        "MAN","VOH"))) %>%
+                mutate(urban = ifelse(stratum %in% c("MAHAJANGA I","MANAKARA","TULEAR I"),
+                                      "Urban","Rural"),
+                       urban=factor(urban,levels=c("Urban","Rural"))) %>%
+                filter(dose!="Third")
+#figure 2b annotation
+fs4a_ann_text <- data.frame(cov = .05,
+                           pLate = .025,
+                       dose=factor(c(1,1),levels=as.character(1:3)),
+                       District = factor(c("TU1","TU2"),
+                                      levels = levels(fs4a_tab$District)),
+                       lab = c("Urban","Rural"),
+                       urban = factor(c("Urban","Rural"),
+                                      levels = c("Urban","Rural")))
+
+#figure 2b ggplot
+fs4a <- fs4a_tab %>% ggplot(aes(x=District,y=cov*100,
+                              col = dose, group=dose)) +
+                geom_point()+
+                geom_errorbar(aes(ymin=lb*100,ymax=ub*100,col = dose,group=dose),
+                      width =0.25) +
+        scale_colour_grey(start=0.8, end=0.5)+
+        ylab("Coverage at 1-year old (%)")+
+        ylim(c(0,100))+ 
+        geom_text(data = fs4a_ann_text,aes(label=lab),col="black")+ 
+
+        facet_grid(.~urban, 
+                   scales = "free")+
+        theme_cowplot()+theme(  legend.position="none",
+                                strip.background = element_blank(),
+                                strip.text.x = element_blank()
+                                )
+
+
+
+#figure 2c table
+fs4b_tab <-stratifyCovLat(analysis.Rota,"birth.month")[[1]] %>%
+                mutate(cov=round(cov,2)) %>%
+                mutate(birth.month=factor(as.numeric(stratum),levels=1:12)) %>%
+                filter(dose!="Third")
+
+#figure 2c ggplot
+fs4b <- fs4b_tab %>% ggplot(aes(x=birth.month,y=cov*100, 
+                              col = dose, group=dose)) +
+                geom_point()+#position=position_dodge(width = .5)) +
+                geom_line()+#position=position_dodge(width = .5)) +
+        geom_errorbar(aes(ymin=lb*100,ymax=ub*100,col = dose,group=dose),
+                      #position=position_dodge(width = .5),
+                      width =0.25) +
+                scale_colour_grey("Dose",start=0.8, end=0.5)+
+        ylab("Coverage at 1-year old (%)") +
+        xlab("Birth Month")+
+        ylim(c(0,100))+theme_cowplot()+
+        theme(axis.title.y = element_blank())
+
+#figure s3c table
+f2def_cols <- c("#fe9929", "#cc4c02", "#662506") #colors for lateness
+
+fs4c_tab <- stratifyCovLat(analysis.Rota,"District")[[2]] %>%
+                mutate(pLate=round(lateness,2)) %>%
+                mutate(District=factor(stratum, levels=levels(analysis.Rota$District),
+                                              labels= c("MAH","MAR",
+                                                        "TU1","TU2",
+                                                        "MAN","VOH"))) %>%
+                mutate(urban = ifelse(stratum %in% c("MAHAJANGA I","MANAKARA","TULEAR I"),
+                                      "Urban","Rural"),
+                       urban=factor(urban,levels=c("Urban","Rural")))%>%
+                filter(dose!="Third")
+# figure s3c ggplot
+fs4c <- fs4c_tab %>%
+        ggplot(aes(x=District,y=pLate*100,
+                              col = dose, group=dose)) +
+                geom_point()+
+         scale_color_manual(values=f2def_cols[1:2]) +
+        ylim(c(0,50))+ 
+        geom_text(data = fs4a_ann_text,aes(label=lab),col="black")+
+
+        facet_grid(.~urban,
+                   scales = "free")+
+        theme_cowplot()+theme(  legend.position="none",
+                                strip.background = element_blank(),
+                                strip.text.x = element_blank()
+                                )+
+        ylab("Percentage receiving late doses (%)")
+
+# figure s3d table
+fs4d_tab <-stratifyCovLat(analysis.Rota,"birth.month")[[2]] %>%
+                mutate(pLate=round(lateness,2)) %>%
+                mutate(birth.month=factor(as.numeric(stratum),levels=1:12))%>%
+                filter(dose!="Third")
+# figure s3d ggplot
+fs4d <- fs4d_tab %>%
+        ggplot(aes(x=birth.month,y=pLate*100, 
+                              col = dose, group=dose)) +
+                geom_point()+
+                geom_line()+
+         scale_color_manual("Dose",values=f2def_cols[1:2]) +
+        xlab("Birth Month")+
+        ylim(c(0,50))+theme_cowplot()+
+        theme(axis.title.y = element_blank())
+
+
+
+#bring it all together
+# fs3<- plot_grid(ggplot+theme_void(),f2a,f2b,f2c,
+#                 ggplot+theme_void(),f2d,f2e,f2f,nrow=2,
+#                 labels = c("A","","B","C","D","","E","F"),
+#                 align = "hv",axis="lb",rel_widths = c(0.1,1.3, 1,1.3))
+
+
+# plot_grid(fs4a,fs4b,fs4c,fs4d,nrow=2,labels=c("A","B","C","D"))
+
+
+plot_grid(ggplot+theme_void(), fs4a,ggplot+theme_void(), fs4b,
+          ggplot+theme_void(), fs4c,ggplot+theme_void(), fs4d,
+          nrow=2,labels=c("A","","B","","C","","D",""),
+          rel_widths = c(0.1,1, 0.1,1.3))
+```
+
+
 
 \pagebreak
 
 
-## Figure S5: Kaplan-Meier curves for each vaccine and dose using the vaccination card database
+## Web Figure 5: Kaplan-Meier curves for each vaccine and dose using the vaccination card database
 
 Black dashed lines indicate the scheduled week of vaccination.
 
@@ -1109,12 +1305,17 @@ plot_grid(fs2a,fs2b,fs2c,ncol =1,align="v", labels=c("A","B","C"))
   
 \pagebreak
 
-## Figure S6: Weekly rates of vaccination used in the simulation
+## Web Figure 6: Weekly rates of vaccination used in the simulation
 
 The y-axis, the weekly rate of vaccination, was estimated from our data set on DTP vaccination. Specifically, this is the weekly probability of being vaccinated for a particular dose, given that an individual has not been vaccinated yet. (A) Weekly rates of vaccination are shown for each dose during routine vaccination. (B) Weekly rates of vaccination are shown for each dose during routine vaccination for individuals receiving their previous dose through a vaccination week catch-up campaign.
 
 ```{r , fig.width=8,fig.height=8}
-RegRates <- read_csv("vaccRateMatrix.csv") %>% select(-X1)
+RegRates <- getRates(analysis.DTP,1) %>% rename(rate1=prob) %>%
+        left_join(getRates(analysis.DTP,2) %>% rename(rate2=prob)) %>%
+        left_join(getRates(analysis.DTP,3) %>% rename(rate3=prob)) %>%
+         mutate(rate2=ifelse(is.na(rate2),0,rate2),
+                rate3=ifelse(is.na(rate3),0,rate3)
+                ) 
 
 rates <- RegRates %>% 
                 rename(week=tstart,
@@ -1163,35 +1364,25 @@ plot_grid(fs3a,
 
 \pagebreak
 
-## Figure S7: Simulated impact of catch-up campaigns with uniform routine vaccination rates.
+## Web Figure 7: Simulated impact of catch-up campaigns with uniform routine vaccination rates.
 
-In this sensitivity analysis, routine vaccination rates for all individuals are those shown in Figure S3A. Children vaccinated through vaccination weeks do not have decreased rates of vaccination for subsequent doses, as shown in Figure S3B. (A) The simulated coverage of the third dose of DTP vaccine of children at 1-year of age is shown on the y-axis for different levels of catch-up on VWs (black dashed lines). (B) The height of the bar indicates the relative number of doses for a perfect catch-up campaign (i.e. 100% catch-up) versus routine vaccination with now catch-up campaigns.
+In this sensitivity analysis, routine vaccination rates for all individuals are those shown in Figure S6A. Children vaccinated through vaccination weeks do not have decreased rates of vaccination for subsequent doses. (A) The simulated coverage of the third dose of DTP vaccine of children at 1-year of age is shown on the y-axis for different levels of catch-up on VWs (black dashed lines). (B) The height of the bar indicates the relative number of doses for a perfect catch-up campaign (i.e. 100% catch-up) versus routine vaccination with no catch-up campaigns (solid black line).
 
 ```{r, fig.width=8, fig.height=8}
 
 #DO SENSITIVITY ANALYSIS
-source('markov_dates_VW.R')
+# source('markov_dates_VW.R')
 
-# SENScatchupFull <- VWsimulationSens(catchup = 1)
-# SENScatchupHalf <- VWsimulationSens(catchup = 0.5)
-# SENScatchupTenth <- VWsimulationSens(catchup = 0.1)
-# SENScatchupNone <- VWsimulationSens(catchup = 0)
-# 
-# write_rds(SENScatchupFull,"data/generated_data/simulationfiles/SENScatchupFull.rds")
-# write_rds(SENScatchupHalf,"data/generated_data/simulationfiles/SENScatchupHalf.rds")
-# write_rds(SENScatchupTenth,"data/generated_data/simulationfiles/SENScatchupTenth.rds")
-# write_rds(SENScatchupNone,"data/generated_data/simulationfiles/SENScatchupNone.rds")
+SENScatchupFull <- VWsimulationSens(catchup = 1,rates=RegRates)
+SENScatchupHalf <- VWsimulationSens(catchup = 0.5,rates=RegRates)
+SENScatchupTenth <- VWsimulationSens(catchup = 0.1,rates=RegRates)
+SENScatchupNone <- VWsimulationSens(catchup = 0,rates=RegRates)
 
-
-SENScatchupFull <-read_rds("data/generated_data/simulationfiles/SENScatchupFull.rds")
-SENScatchupHalf <- read_rds("data/generated_data/simulationfiles/SENScatchupHalf.rds")
-SENScatchupTenth <- read_rds("data/generated_data/simulationfiles/SENScatchupTenth.rds")
-SENScatchupNone <- read_rds("data/generated_data/simulationfiles/SENScatchupNone.rds")
 # markov models
 
 #gray.colors(3, start = 0.2, end = 0.8)
-VWs <- as.Date(c("2015-05-13","2015-10-28",
-                 "2016-05-09","2016-10-26")) #check if these dates were used to simulate
+VWs <- as.Date(c("2015-05-13","2015-10-21","2016-05-11","2016-10-19")) 
+
 
 
 # VWlabels <- data.frame(
@@ -1226,16 +1417,21 @@ p1 <- bind_rows(SENScatchupFull[[1]],
         theme_cowplot()+
         guides(colour = guide_legend(reverse=T))
 
-
+#get number of doses for max campaign 
 dt <- SENScatchupFull[[2]] %>% group_by(date) %>%
         summarize(First=sum(First),
                   Second=sum(Second),
                   Third=sum(Third)) %>%
         gather(dose,count,-date)
 
+#get number of doses for no campaign 
+dt_none <- SENScatchupNone[[2]] %>% group_by(date) %>%
+        summarize(Total=sum(First)+sum(Second)+sum(Third))
+
 
 p2 <- dt %>%  ggplot() + geom_bar(stat="identity",
-                                    aes(x=date,y=count/2560,fill=dose)) +
+                                    aes(x=date,y=count/max(dt_none$Total),#calculate the relative number of doses
+                                        fill=dose)) +
         xlim(as.Date(c("2015-01-01","2017-03-01"))) +
         scale_fill_grey(name="Dose",start=0.8, end=0.2)+
         xlab("Week of Vaccination") +
