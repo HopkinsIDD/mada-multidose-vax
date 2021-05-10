@@ -36,7 +36,7 @@ analysis.Rota <- analysis[[3]]
 
 ## Web Table 1: Supplemental vaccination activities in Madagascar from 2013 to 2016.
 
-The date, type of activity (Supplemental Immunization Activity (SIA) or Vaccination Week, vaccine, and age target for non-routine activities is shown. Routine vaccines include those for measles,diphtheria, pertussis, tetanus, Hepatitis B infection, Haemophilius influenzae (Hib) infection, pneumococcal disease,  rotavirus infection, and poliovirus. 
+The date, type of activity (Supplemental Immunization Activity (SIA) or Vaccination Week, and vaccine  for non-routine activities is shown. Routine vaccines include those for measles,diphtheria, pertussis, tetanus, Hepatitis B infection, Haemophilius influenzae (Hib) infection, pneumococcal disease,  rotavirus infection, and poliovirus. 
 
 ```{r}
 
@@ -64,7 +64,7 @@ flextable(ts1) %>% width(width=1.5) %>% align_text_col(align="center")
 
 \pagebreak
 
-## Web Figure 1: Monthly number of doses given in six study districts according to the National Administrative database, 2013-2018
+## Web Figure 1: Monthly number of doses given in six study districts according to the national administrative data, 2013-2018
 
 Dashed lines indicate months in which supplemental vaccination campaigns took place.
 
@@ -534,16 +534,15 @@ finalCoverage[,c(3,1:2,4:10)] %>%
 
 \pagebreak
 
-## Web Figure 2: Process of curating the analysis data set for the vaccination card database
+## Web Figure 2: Process of curating the analysis data set for the vaccination card data
 
-Steps to create a final analysis data set included 1) removing all cards for children that were not born in 2015 and 2016, 
-2) removing cards with evidence of later doses being given without evidence of prior doses, 3) removing all cards with vaccination dates that were out of order, and 4) removing all cards where there’s evidence of a vaccination occurring but no date is listed.
+Steps to create a final analysis data set included 1) removing all cards for children that were not born in 2015 and 2016, 2) removing cards with evidence of later doses being given without evidence of prior doses, 3) removing all cards with vaccination dates that were out of order, and 4) removing all cards where there’s evidence of a vaccination occurring but no date is listed.
 
 ![ ](../figures/supp_figures/figureS2_data_cleaning.png){width=500px}
   
 \pagebreak
 
-## Web Appendix 1: Calculation of vaccination coverage and proportion late from vaccination card database
+## Web Appendix 1: Calculation of vaccination coverage and proportion late from vaccination card data
 
 ### Vaccination Coverage
   
@@ -591,21 +590,7 @@ Formally, in the analysis of the second dose, each individual has an associated 
 \end{cases}
 \]
 
-For example, there might be four individuals under observation for the first dose, all of whom are born on different weeks . Individual 1 received her first dose at 6 weeks since birth. Individual 2 has a censored observation at 10 weeks since he was not vaccinated before the vaccination cards were collected. Individuals 3 and 4 both received their first dose at 12 weeks before data collection occurred:
-
-![ ](../figures/supp_figures/eqnS1_weightexample0.png){width=300px}
-
-Using the Kaplan-Meier approach, we can compute the survival function. Our time metric used in this calculation is age in weeks:
-
-![ ](../figures/supp_figures/eqnS1_weightexample1.png){width=300px}
-We can then implement the equation above to estimate the second dose weights for each individual (i.e. $w_{2i}$):
-
-![ ](../figures/supp_figures/eqnS1_weightexample2.png){width=300px}
-
-The second dose weight of Individual 1 (i.e. $w_{21}$) equals to 1 because they received their first dose prior to any individuals being censored. The second dose weight for Individual 3 and Individual 4 is 1.5 because they received their first dose after Individual 2 was censored. The second dose weight of Individual 2 is zero because we have redistributed their weight to Individual 3 and Individual 4.
-
-These weights would then be used in the second dose analysis (next section). Individuals with weights greater than 1 (e.g. Individuals 3 and 4) would represent both themselves and censored individuals (e.g. Individual 2) in the second dose analysis. Individuals with a weight equal to 1 (e.g. Individual 1) would only represent themselves in the second dose analysis.
-
+To see an explanatory example for the calculation of the second dose weights, see Web Figure 3.
 
 *Second Dose Analysis*
 
@@ -864,6 +849,21 @@ $$
 
 \pagebreak
 
+## Web Figure 3: Explanatory example for calculating weights used in the Kaplan-Meier approach
+
+In this example, there are four individuals under observation for the first dose, all of whom are born on different weeks (Web Figure 3A). Individual 1 received her first dose at 6 weeks since birth. Individual 2 has a censored observation at 10 weeks since he was not vaccinated before the vaccination cards were collected. Individuals 3 and 4 both received their first dose at 12 weeks before data collection occurred.
+
+Using the Kaplan-Meier approach, we can compute the survival function. Our time metric used in this calculation is age in weeks (Web Figure 3B). We can then implement the equation highlighted in Web Appendix 1 to estimate the second dose weights for each individual (Web Figure 3C).
+
+The second dose weight of Individual 1 (i.e. $w_{21}$) equals to 1 because they received their first dose prior to any individuals being censored. The second dose weight for Individual 3 and Individual 4 is 1.5 because they received their first dose after Individual 2 was censored. The second dose weight of Individual 2 is zero because we have redistributed his weight to Individual 3 and Individual 4.
+
+These weights would then be used in the second dose analysis. Individuals with weights greater than 1 (e.g. Individuals 3 and 4) would represent both themselves and censored individuals (e.g. Individual 2) in the second dose analysis. Individuals with a weight equal to 1 (e.g. Individual 1) would only represent themselves in the second dose analysis.
+
+
+![ ](../figures/supp_figures/WebFigure_weightingexample.png){width=600px}
+
+\pagebreak
+
 
 ## Web Appendix 2: Poisson regression model to investigate impact of additional vaccination activities
 
@@ -917,14 +917,12 @@ $$
 \pagebreak
 
 
+
 ## Web Appendix 3: Deterministic markov model structure and equations
 
 ### Routine Vaccination model
 
-We simulated vaccination history of 1000 newborns over the first year of life, all of whom start off in the $R_0$ compartment. As newborns get older and are vaccinated through routine programs, they transition from $R_0$ to $R_1$ (first dose) to $R_2$ (second dose) to $R_3$ (third dose). We use $j$ to denote dose in this notation. Each dose compartment is also defined by $a$, the age of the child in weeks and $t$ the number of weeks spent at a particular dose.
-
-![Routine vaccination model graph.](../figures/supp_figures/eqnS3_routineGraph.png)
-
+We simulated vaccination history of 1000 newborns over the first year of life, all of whom start off in the $R_0$ compartment. As newborns get older and are vaccinated through routine programs, they transition from $R_0$ to $R_1$ (first dose) to $R_2$ (second dose) to $R_3$ (third dose). We use $j$ to denote dose in this notation. Each dose compartment is also defined by $a$, the age of the child in weeks and $t$ the number of weeks spent at a particular dose. See Web Figure 4A for an explanatory figure describing the movement between compartments.
 
 **Initial Conditions**
 
@@ -939,8 +937,7 @@ $$R_{3}(t\geq0,a=0)=0$$
 
 **Rate of routine vaccination**
 
-In our model, the weekly rate of vaccination only depends on which dose a child is yet to receive and how long it has been since their previous vaccination. Specifically, $\lambda^r_{j}(t)$ is the rate of vaccination for the $j$th dose for individuals in $R_{j-1}(t,a)$. This parameter was estimated from the vaccination card data for DTP vaccination (Figure S6A).
-
+In our model, the weekly rate of vaccination only depends on which dose a child is yet to receive and how long it has been since their previous vaccination. Specifically, $\lambda^r_{j}(t)$ is the rate of vaccination for the $j$th dose for individuals in $R_{j-1}(t,a)$. This parameter was estimated from the vaccination card data for DTP vaccination (Web Figure 8A).
 
 
 **Vaccination and Aging**
@@ -958,10 +955,7 @@ $$R_{3}(t=\tau,a=\alpha)=R_{3}(t=\tau-1,a=\alpha-1)$$
 
 ### Vaccination week model
 
-This model simulates 1000 newborns being born for each week between January 1st 2014 and Feburary 1st 2017. Each 1000 newborn cohort uses the same equations from the routine vaccination model, but changes the rate of vaccination,$\lambda^{c}_{d}(t)$, among late individuals during six vaccination weeks, $a=w_v$ occurring in May and October of 2014, 2015, and 2016.
-
-![Vaccination week model graph.](../figures/supp_figures/eqnS3_modelGraph.png)
-
+This model simulates 1000 newborns being born for each week between January 1st 2014 and Feburary 1st 2017. Each 1000 newborn cohort uses the same equations from the routine vaccination model, but changes the rate of vaccination,$\lambda^{c}_{d}(t)$, among late individuals during six vaccination weeks, $a=w_v$ occurring in May and October of 2014, 2015, and 2016. See Web Figure 4B for an explanatory figure describing the movement between compartments.
 
 Specifically, the rate of vaccination depends on whether the lateness cutoff, $t^l_d$, has been passed for an individual to be effected by a  vaccination week. Recall that an individual is considered late at 10, 8, and 8 weeks for each respective dose.
 
@@ -973,13 +967,24 @@ $$\lambda^{c}_{d}(t) = \lambda^{r}_{d}(t)+C(1-\lambda^{r}_{d}(t))$$
 
 where $C$ is a catch-up factor. Note that if $C=0$ that the rate of vaccination is the same as routine vaccination whereas if $C=1$ all late individuals will be vaccinated during the vaccination week.
 
-Lastly, we assumed children who were vaccinated through vaccination weeks (as opposed to routine vaccination), had a different rate of routine vaccination afterwards, $\lambda^{vw}_{d}(t)$ (Figure S6B). Specifically, the highest rates of on-time vaccination or the second and third doses were removed. This reflects our understanding that the effect of catch-up campaigns will mostly be to give an additional dose to many children without necessarily putting them back on track to complete their schedule. In a sensitivity analysis, Figure S7,we examined the impact of relaxing this assumption. 
+Lastly, we assumed children who were vaccinated through vaccination weeks (as opposed to routine vaccination), had a different rate of routine vaccination afterwards, $\lambda^{vw}_{d}(t)$ (Web Figure 8B). Specifically, the highest rates of on-time vaccination or the second and third doses were removed. This reflects our understanding that the effect of catch-up campaigns will mostly be to give an additional dose to many children without necessarily putting them back on track to complete their schedule. In a sensitivity analysis, Web Figure 9,we examined the impact of relaxing this assumption. 
 
 \pagebreak
 
-## Web Figure 3: Estimates of vaccination coverage at one-year of age and proportion of children receiving late doses for PCV10 by district and birth month
 
-Estimates of vaccination coverage at one-year of age and proportion of children receiving late doses for PCV10 are shown by both district and month of birth. Methods for calculating both are described in Equation S1. Districts are abbreviated with three characters (MAH=Mahajanga I; TU1=Tulear I; MAN=Manakara; MAR=Maravoay; TU2=Tulear II, VOH=Vohipeno).
+## Web Figure 4: Explanatory figure describing the compartmental structure of the simulations
+
+The four compartments used in the routine vaccination model are shown for zero ($R_0$), one ($R_1$), two ($R_2$) and three ($R_3$) doses (Web Figure 4A). To incorporate vaccination weeks, we included three additional compartments (i.e. $V_1$,$V_2$ and $V_3$) in Web Figure 4B. Individuals who have been vaccinated through vaccination weeks and have not completed all three doses (i.e. $V_1$ and $V_2$) have been assumed to have lower rates of routine vaccination for subsequent doses (see Web Appendix 3). 
+
+
+![ ](../figures/supp_figures/WebFigure_compartments.png){width=600px}
+
+\pagebreak
+
+
+## Web Figure 5: Estimates of vaccination coverage at one-year of age and proportion of children receiving late doses for PCV10 by district and birth month
+
+Estimates of vaccination coverage at one-year of age and proportion of children receiving late doses for PCV10 are shown by both district and month of birth. Methods for calculating both are described in Web Appendix 1. Districts are abbreviated with three characters (MAH=Mahajanga I; TU1=Tulear I; MAN=Manakara; MAR=Maravoay; TU2=Tulear II, VOH=Vohipeno).
 
 ```{r fig.width=7.5, fig.height=7}
 #figure s3a table
@@ -1103,9 +1108,9 @@ plot_grid(ggplot+theme_void(), fs3a,ggplot+theme_void(), fs3b,
 
 \pagebreak
 
-## Web Figure 4: Estimates of vaccination coverage at one-year of age and proportion of children receiving late doses for rotavirus vaccine by district and birth month
+## Web Figure 6: Estimates of vaccination coverage at one-year of age and proportion of children receiving late doses for rotavirus vaccine by district and birth month
 
-Estimates of vaccination coverage at one-year of age and proportion of children receiving late doses for rotavirus vaccine are shown by both district and month of birth. Methods for calculating both are described in Equation S1. Districts are abbreviated with three characters (MAH=Mahajanga I; TU1=Tulear I; MAN=Manakara; MAR=Maravoay; TU2=Tulear II, VOH=Vohipeno).
+Estimates of vaccination coverage at one-year of age and proportion of children receiving late doses for rotavirus vaccine are shown by both district and month of birth. Methods for calculating both are described in Web Appendix 1. Districts are abbreviated with three characters (MAH=Mahajanga I; TU1=Tulear I; MAN=Manakara; MAR=Maravoay; TU2=Tulear II, VOH=Vohipeno).
 
 
 ```{r fig.width=7.5, fig.height=7}
@@ -1239,7 +1244,7 @@ plot_grid(ggplot+theme_void(), fs4a,ggplot+theme_void(), fs4b,
 \pagebreak
 
 
-## Web Figure 5: Kaplan-Meier curves for each vaccine and dose using the vaccination card database
+## Web Figure 7: Kaplan-Meier curves for each vaccine and dose using the vaccination card data
 
 Black dashed lines indicate the scheduled week of vaccination.
 
@@ -1303,7 +1308,7 @@ plot_grid(fs2a,fs2b,fs2c,ncol =1,align="v", labels=c("A","B","C"))
   
 \pagebreak
 
-## Web Figure 6: Weekly rates of vaccination used in the simulation
+## Web Figure 8: Weekly rates of vaccination used in the simulation
 
 The y-axis, the weekly rate of vaccination, was estimated from our data set on DTP vaccination. Specifically, this is the weekly probability of being vaccinated for a particular dose, given that an individual has not been vaccinated yet. (A) Weekly rates of vaccination are shown for each dose during routine vaccination. (B) Weekly rates of vaccination are shown for each dose during routine vaccination for individuals receiving their previous dose through a vaccination week catch-up campaign.
 
@@ -1362,11 +1367,11 @@ plot_grid(fs3a,
 
 \pagebreak
 
-## Web Figure 7: Simulated impact of catch-up campaigns with uniform routine vaccination rates.
+## Web Figure 9: Simulated impact of catch-up campaigns with uniform routine vaccination rates.
 
-In this sensitivity analysis, routine vaccination rates for all individuals are those shown in Figure S6A. Children vaccinated through vaccination weeks do not have decreased rates of vaccination for subsequent doses. (A) The simulated coverage of the third dose of DTP vaccine of children at 1-year of age is shown on the y-axis for different levels of catch-up on VWs (black dashed lines). (B) The height of the bar indicates the relative number of doses for a perfect catch-up campaign (i.e. 100% catch-up) versus routine vaccination with no catch-up campaigns (solid black line).
+In this sensitivity analysis, routine vaccination rates for all individuals are those shown in Web Figure 8A. Children vaccinated through vaccination weeks do not have decreased rates of vaccination for subsequent doses. (A) The simulated coverage of the third dose of DTP vaccine of children at 1-year of age is shown on the y-axis for different levels of catch-up on VWs (black dashed lines). (B) The height of the bar indicates the relative number of doses for a perfect catch-up campaign (i.e. 100% catch-up) versus routine vaccination with no catch-up campaigns (solid black line).
 
-```{r, fig.width=8, fig.height=8}
+```{r, fig.width=8, fig.height=8, eval=TRUE}
 
 #DO SENSITIVITY ANALYSIS
 # source('markov_dates_VW.R')
